@@ -352,9 +352,15 @@ function lintDesign(args = {}) {
   const F = []; const add = (severity, rule, message, fix, at) => F.push({ severity, rule, message, fix, ...(at != null ? { line: at } : {}) });
   const { tags } = parseHTML(html);
   const src = html;
-  tags.filter(t => t.name === "style" && !t.close && t.content).forEach(t => { css += "\n" + t.content; });
+  const extCss = css; let inlineCss = "";
+  tags.filter(t => t.name === "style" && !t.close && t.content).forEach(t => { inlineCss += "\n" + t.content; });
+  css = extCss + "\n" + inlineCss;
   const styleAttrs = tags.filter(t => t.attrs.style).map(t => `x{${t.attrs.style}}`).join("\n");
-  const rules = cssRules(css + "\n" + styleAttrs);
+  // keep only CSS rules that can apply to this markup (framework bundles ship thousands of unused utility classes)
+  const used = new Set(["dark", "light"]); tags.forEach(t => (t.attrs.class || "").split(/\s+/).forEach(c => c && used.add(c)));
+  const applies = sel => sel.split(",").some(part => { const cls = [...part.matchAll(/\.((?:\\.|[\w-])+)/g)].map(m => m[1].replace(/\\/g, "")); return cls.every(c => used.has(c)); });
+  const external = cssRules(extCss).filter(r => /^(:root|html|body|\*)/.test(r.sel) || applies(r.sel));
+  const rules = [...external, ...cssRules(inlineCss + "\n" + styleAttrs)];
   const vars = {}; rules.forEach(r => { for (const k in r.decl) if (k.startsWith("--")) vars[k] = vars[k] ?? r.decl[k]; });
 
   // --- accessibility: structure
@@ -416,7 +422,7 @@ function lintDesign(args = {}) {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
     const ff = d["font-family"] || (d.font && d.font.match(/(?:\d+px|\d+(?:\.\d+)?rem|\d+(?:\.\d+)?em)(?:\/[\d.]+)?\s+(.+)$/)?.[1]);
-    if (ff) { const first = resolveVars(ff, vars).split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^(inherit|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first)) fams.add(first); }
+    if (ff) { const first = resolveVars(ff, vars).split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^(inherit|initial|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first) && !/ fallback$/.test(first)) fams.add(first); }
     for (const k in d) { const v = resolveVars(d[k], vars); (v.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g) || []).forEach(c => { const p = parseColor(c); if (p) colors.add(toHex(p)); }); }
     for (const k of ["background", "background-color"]) { const c = firstColor(resolveVars(d[k], vars)); if (c && (r.sel.match(/\b(body|html|main|:root)\b/) || /^\.?[\w-]+$/.test(r.sel))) bgColors.add(toHex(c)); }
     for (const k in d) if (/^--(color-)?(bg|background|paper|page)$/.test(k)) { const c = firstColor(resolveVars(d[k], vars)); if (c) bgColors.add(toHex(c)); }
@@ -433,7 +439,7 @@ function lintDesign(args = {}) {
   // token pair contrast: --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)
   rules.forEach(r => {
     const keys = Object.keys(r.decl).filter(k => k.startsWith("--"));
-    const fgK = keys.filter(k => /^--(color-)?(text|ink|muted|fg|foreground|text-muted|muted-foreground)$/.test(k)), bgK = keys.filter(k => /^--(color-)?(bg|background|surface|paper|well|raised|card)$/.test(k));
+    const bgRef = firstColor(resolveVars(r.decl[keys.find(k => /^--(color-)?(bg|background|surface|paper)$/.test(k))] || "", vars)); const fgK = keys.filter(k => /^--(color-)?(text|ink|fg|foreground|text-muted|muted-foreground)$/.test(k) || (/^--(color-)?muted$/.test(k) && bgRef && (() => { const c = firstColor(resolveVars(r.decl[k], vars)); return c && contrast(c, bgRef) >= 2; })())), bgK = keys.filter(k => /^--(color-)?(bg|background|surface|paper|well|raised|card)$/.test(k));
     fgK.forEach(f => bgK.forEach(b => { const fc = firstColor(resolveVars(r.decl[f], vars)), bc = firstColor(resolveVars(r.decl[b], vars)); if (fc && bc) { const cr = contrast(fc, bc); if (cr < 4.5) add("error", "token-contrast", `Theme "${r.sel.slice(0, 40)}": ${f} on ${b} is ${cr.toFixed(2)}:1.`, `Set ${f} to ${fixForeground(fc, bc, 4.6)}.`); } }));
   });
   if (outlineNone && !focusVisible) add("error", "focus-removed", "outline is removed and no :focus-visible style replaces it.", ":focus-visible{outline:2px solid <brand>;outline-offset:2px}");
