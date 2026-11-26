@@ -1,0 +1,13 @@
+name = "design-skills-mcp"
+main = "src/worker.js"
+account_id = "74b1d799edeb353462d0852d45cb345f"
+compatibility_date = "2025-11-01"
+workers_dev = true
+
+[[routes]]
+pattern = "mcp.antigravityskills.org"
+custom_domain = true
+
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "design_skills_mcp"

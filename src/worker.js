@@ -233,6 +233,25 @@ const SCALE = (density) => {
   return { base_px: base, ratio: r, steps_px: { xs: s[0], sm: s[1], base: s[2], lg: s[3], xl: s[4], "2xl": s[5], "3xl": s[6], "4xl": s[7] }, line_height: { body: density === "dense" ? 1.45 : 1.6, heading: 1.15 }, measure: "60-75ch for body text", note: "Fixed px steps with a breakpoint jump for h1; do not scale fonts with vw." };
 };
 
+function starterCSS(rc, rp, sc) {
+  const t = sc.steps_px;
+  return `*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--color-bg);color:var(--color-text);font:${t.base}px/${sc.line_height.body} var(--font-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display);line-height:${sc.line_height.heading};text-wrap:balance;margin:0 0 .5em}
+h1{font-size:${t["2xl"]}px;letter-spacing:-.02em}@media(min-width:768px){h1{font-size:${t["4xl"]}px}}
+h2{font-size:${t.xl}px;letter-spacing:-.01em}h3{font-size:${t.lg}px}
+p{max-width:68ch}small,.muted{color:var(--color-muted)}
+a{color:var(--color-primary-text);text-underline-offset:3px}
+code,pre{font-family:var(--font-mono);font-size:.9em}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border-radius:${rc}px;border:1px solid transparent;font:600 ${t.sm + 1}px var(--font-body);cursor:pointer;touch-action:manipulation;transition:background-color .15s,border-color .15s}
+.btn-primary{background:var(--color-primary);color:var(--color-on-primary)}
+.btn-secondary{background:var(--color-surface);color:var(--color-text);border-color:var(--color-border)}
+.btn-secondary:hover{border-color:var(--color-muted)}
+input,select,textarea{min-height:44px;padding:0 12px;border-radius:${rc}px;border:1px solid var(--color-muted);background:var(--color-surface);color:var(--color-text);font:inherit}
+.panel{background:var(--color-surface);border:1px solid var(--color-border);border-radius:${rp}px;padding:24px}
+:focus-visible{outline:2px solid var(--color-primary-text);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}`;
+}
 function designDirection(args = {}) {
   const brief = [args.product, args.audience, args.tone, args.notes].filter(Boolean).join(" ");
   if (!brief.trim()) return { error: "Describe the product in `product`, e.g. 'landing page for a free remote MCP server for developers'." };
@@ -254,6 +273,7 @@ function designDirection(args = {}) {
     radius: { control: rad(preset.radius.control), panel: rad(preset.radius.panel), rule: "Smaller radius on small controls, larger on big panels; never one radius for everything." },
     density, layout: preset.layout, hero: preset.hero,
     avoid: [...preset.avoid, "Tracked-out ALL-CAPS eyebrow labels above every heading", "Identical rounded cards with the same soft shadow for every section", "Accenting one word of the headline in a different color or italic", "Arrows appended to every button and link"],
+    starter_css: starterCSS(rad(preset.radius.control), rad(preset.radius.panel), SCALE(density)),
     next_steps: ["Paste css_variables into your stylesheet and reference only the tokens.", "Build the hero as described, with real content.", "Run lint_design on the HTML/CSS before shipping; fix every error.", "Use get_design_pipeline for the skills to install for the rest of the build."],
   };
 }
@@ -391,7 +411,7 @@ function lintDesign(args = {}) {
 
   // --- CSS checks
   let outlineNone = false; const focusVisible = rules.some(r => /:focus(-visible|-within)?\b/.test(r.sel) && ((r.decl.outline && !/^(none|0)\b/.test(r.decl.outline)) || r.decl["box-shadow"] || r.decl["outline-color"] || r.decl.border || r.decl["border-color"]));
-  const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0;
+  const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0, tiny = 0;
   rules.forEach(r => {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
@@ -403,6 +423,7 @@ function lintDesign(args = {}) {
     if (/uppercase/.test(d["text-transform"] || "") && parseFloat(d["letter-spacing"] || "0") > 0.04) uppercaseTracked++;
     for (const k of ["background", "background-image"]) if (/gradient\(/.test(d[k] || "")) gradients++;
     if (/\d(\.\d+)?vw/.test(d["font-size"] || "") && !/clamp\(/.test(d["font-size"])) vwFont++;
+    { const fs = (d["font-size"] || "").match(/^(\d+(?:\.\d+)?)px$/); if (fs && +fs[1] < 12) tiny++; }
     if (/\ball\b/.test(d.transition || "") || /\ball\b/.test(d["transition-property"] || "")) transAll++;
     if (/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.(0[5-9]|1|15)\)/.test(d["box-shadow"] || "")) softShadow++;
     // contrast of color/background declared in same rule
@@ -418,6 +439,7 @@ function lintDesign(args = {}) {
   if (outlineNone && !focusVisible) add("error", "focus-removed", "outline is removed and no :focus-visible style replaces it.", ":focus-visible{outline:2px solid <brand>;outline-offset:2px}");
   if (!focusVisible && tags.some(t => ["button", "a", "input"].includes(t.name))) add("warn", "focus-style", "No :focus-visible style; keyboard users rely on the browser default.", "Add a visible :focus-visible ring that matches the design.");
   if (!/prefers-reduced-motion/.test(css) && /(animation\s*:|@keyframes|transition\s*:)/.test(css)) add("warn", "reduced-motion", "Animations or transitions without a prefers-reduced-motion rule.", "@media (prefers-reduced-motion: reduce){ ... }");
+  if (tiny) add("warn", "tiny-text", `${tiny} rule(s) set text below 12px.`, "Keep text at 12px or more (14px+ for anything people must read).");
   if (transAll) add("warn", "transition-all", `transition: all used ${transAll}x.`, "List the properties (opacity, transform, color).");
   if (vwFont) add("warn", "vw-font", "font-size in vw without clamp(): text will not respect zoom and gets tiny on phones.", "Use fixed px/rem steps with a breakpoint, or clamp(min, vw, max).");
   if (fams.size > 3) add("warn", "too-many-fonts", `${fams.size} font families: ${[...fams].join(", ")}.`, "Use one or two families plus a mono.");
@@ -742,7 +764,8 @@ export default {
       return json({ name: SERVER.name, title: SERVER.title, version: SERVER.version, transport: "streamable-http", url: url.origin + "/mcp",
         tools: TOOLS.map(t => t.name), homepage: SITE + "/design-skills-mcp" });
     }
-    if (url.pathname === "/" ) {
+    if (url.pathname === "/") {
+      await loadSkills();
       return new Response(`<!doctype html><meta charset=utf-8><title>Design Skills MCP</title><body style="font:16px/1.5 system-ui;max-width:640px;margin:40px auto;padding:0 16px"><h1>Design Skills MCP</h1><p>Free remote MCP server with ${SKILLS.length} hand-tested design skills and ${PIPELINES.length} pipelines from <a href="${SITE}">antigravityskills.org</a>.</p><p>Endpoint: <code>${url.origin}/mcp</code></p><p>Setup guide: <a href="${SITE}/design-skills-mcp">${SITE}/design-skills-mcp</a></p>`, { headers: { "Content-Type": "text/html; charset=utf-8", ...CORS } });
     }
     return json({ error: "Not found", mcp_endpoint: url.origin + "/mcp" }, 404);
