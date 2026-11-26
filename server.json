@@ -3,7 +3,17 @@
   "name": "org.antigravityskills/design-skills",
   "title": "Design Skills Library",
   "description": "Find hand-tested UI/UX design skills for coding agents: verdicts, safety flags, pipelines, installs.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "websiteUrl": "https://www.antigravityskills.org/design-skills-mcp",
-  "remotes": [{ "type": "streamable-http", "url": "https://mcp.antigravityskills.org/mcp" }]
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.antigravityskills.org/mcp"
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/bodhi584/design-skills-mcp",
+    "source": "github",
+    "id": "1473180640"
+  }
 }
