@@ -1,0 +1,15 @@
+{
+  "name": "design-skills-mcp",
+  "version": "2.0.0",
+  "description": "MCP server with design tools (direction tokens, HTML/CSS lint, contrast) and 25 hand-tested UI/UX design skills from antigravityskills.org.",
+  "type": "module",
+  "bin": { "design-skills-mcp": "src/stdio.mjs" },
+  "scripts": {
+    "start": "node src/stdio.mjs",
+    "test": "node test/run.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "homepage": "https://www.antigravityskills.org/design-skills-mcp",
+  "repository": { "type": "git", "url": "https://github.com/bodhi584/design-skills-mcp.git" },
+  "license": "MIT"
+}

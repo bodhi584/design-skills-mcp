@@ -55,6 +55,19 @@ claude mcp add --transport http design-skills https://mcp.antigravityskills.org/
 
 **Claude.ai, ChatGPT and other apps:** add a custom connector (remote MCP) and paste the endpoint URL.
 
+**Run it locally (stdio, no key, Node 18+):**
+
+```bash
+git clone https://github.com/bodhi584/design-skills-mcp && cd design-skills-mcp
+node src/stdio.mjs
+```
+
+```json
+{ "mcpServers": { "design-skills": { "command": "node", "args": ["/path/to/design-skills-mcp/src/stdio.mjs"] } } }
+```
+
+The local server runs the same code as the hosted one and reads skill data from `data/design-skills.json`, so the skill tools work offline. `lint_design` with a `url` argument still fetches that page.
+
 ## Try it
 
 Once connected, ask your agent:
@@ -74,7 +87,9 @@ This returns the `slide-deck` pipeline: `theme-factory` → `html-slides` → `d
 
 ## Repo contents
 
-- `src/worker.js`: the Cloudflare Worker. It is a stateless MCP server using JSON-RPC over Streamable HTTP. At deploy time the `__DATA__` placeholder is replaced with the data file.
+- `src/worker.js`: the Cloudflare Worker. It is a stateless MCP server using JSON-RPC over Streamable HTTP. The hosted server loads skill data from this repo every hour.
+- `src/stdio.mjs`: local stdio entry that runs the same handler on your machine.
+- `glama.json`: Glama maintainer file.
 - `data/design-skills.json`: the skill data (our reviews).
 - `server.json`: the MCP Registry entry.
 
