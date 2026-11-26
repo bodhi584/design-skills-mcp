@@ -1,0 +1,451 @@
+// Design engine for the Design Skills MCP: color math, direction presets, HTML/CSS lint, checklists.
+// Plain JS, no dependencies, runs in Cloudflare Workers and Node.
+
+// ---------- color ----------
+const NAMED = { black: "#000000", white: "#ffffff", red: "#ff0000", green: "#008000", blue: "#0000ff", gray: "#808080", grey: "#808080", silver: "#c0c0c0", navy: "#000080", orange: "#ffa500", yellow: "#ffff00", purple: "#800080", teal: "#008080", transparent: null, currentcolor: null, inherit: null };
+
+export function parseColor(input) {
+  if (input == null) return null;
+  let s = String(input).trim().toLowerCase();
+  if (s in NAMED) { if (!NAMED[s]) return null; s = NAMED[s]; }
+  let m = s.match(/^#([0-9a-f]{3,8})$/);
+  if (m) {
+    let h = m[1];
+    if (h.length === 3 || h.length === 4) h = h.split("").map(c => c + c).join("");
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
+    return { r, g, b, a };
+  }
+  m = s.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/);
+  if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] ? (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : +m[4]) : 1 };
+  m = s.match(/^hsla?\(\s*([\d.]+)(?:deg)?[\s,]+([\d.]+)%[\s,]+([\d.]+)%(?:[\s,/]+([\d.]+%?))?\s*\)$/);
+  if (m) {
+    const [r, g, b] = hslToRgb(+m[1], +m[2] / 100, +m[3] / 100);
+    return { r, g, b, a: m[4] ? (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : +m[4]) : 1 };
+  }
+  m = s.match(/^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:deg)?\s*(?:\/\s*([\d.]+%?))?\)$/);
+  if (m) {
+    const L = m[1].endsWith("%") ? parseFloat(m[1]) / 100 : +m[1];
+    const [r, g, b] = oklchToRgb(L, +m[2], +m[3]);
+    return { r, g, b, a: 1 };
+  }
+  return null;
+}
+function hslToRgb(h, s, l) {
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [f(0) * 255, f(8) * 255, f(4) * 255].map(Math.round);
+}
+export const toHex = c => "#" + [c.r, c.g, c.b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+export function luminance(c) { return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b); }
+function blend(fg, bg) { const a = fg.a == null ? 1 : fg.a; return { r: fg.r * a + bg.r * (1 - a), g: fg.g * a + bg.g * (1 - a), b: fg.b * a + bg.b * (1 - a), a: 1 }; }
+export function contrast(fg, bg) {
+  const f = fg.a < 1 ? blend(fg, bg) : fg;
+  const L1 = luminance(f), L2 = luminance(bg);
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}
+// OKLab / OKLCH
+function rgbToOklab(c) {
+  const r = lin(c.r), g = lin(c.g), b = lin(c.b);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+}
+export function rgbToOklch(c) { const [L, a, b] = rgbToOklab(c); let h = Math.atan2(b, a) * 180 / Math.PI; if (h < 0) h += 360; return { L, C: Math.hypot(a, b), h }; }
+const gam = v => { const x = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; return Math.round(Math.max(0, Math.min(1, x)) * 255); };
+function oklabToRgbRaw(L, a, b) {
+  const l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3), m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3), s = Math.pow(L - 0.0894841775 * a - 1.291485548 * b, 3);
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+}
+export function oklchToRgb(L, C, h) {
+  // reduce chroma until in gamut
+  let c = C;
+  for (let i = 0; i < 40; i++) {
+    const rad = h * Math.PI / 180;
+    const rgb = oklabToRgbRaw(L, c * Math.cos(rad), c * Math.sin(rad));
+    if (rgb.every(v => v >= -0.001 && v <= 1.001)) return rgb.map(gam);
+    c *= 0.9;
+  }
+  const rad = h * Math.PI / 180; return oklabToRgbRaw(L, 0, 0).map(gam);
+}
+const okl = (L, C, h) => { const [r, g, b] = oklchToRgb(L, C, h); return { r, g, b, a: 1 }; };
+// move lightness until contrast target met against bg
+function fitL(L, C, h, bg, target, dir) {
+  let c = okl(L, C, h);
+  for (let i = 0; i < 80 && contrast(c, bg) < target; i++) { L = Math.max(0, Math.min(1, L + dir * 0.01)); c = okl(L, C, h); }
+  return { color: c, L };
+}
+export function fixForeground(fg, bg, target = 4.5) {
+  if (contrast(fg, bg) >= target) return toHex(fg);
+  const o = rgbToOklch(fg); const dir = luminance(bg) > 0.18 ? -1 : 1;
+  return toHex(fitL(o.L, o.C, o.h, bg, target, dir).color);
+}
+
+// ---------- direction presets ----------
+// Each preset: hue/chroma for primary and accent, font pairs (Google Fonts, all free), radius, density, layout and hero ideas.
+const PRESETS = [
+  { id: "developer-tool", match: ["developer", "dev tool", "api", "cli", "sdk", "mcp", "code", "devops", "infrastructure", "database", "open source", "agent"],
+    hue: 255, chroma: 0.13, accentHue: 160, neutralHue: 255, neutralChroma: 0.012,
+    fonts: [{ display: "Bricolage Grotesque", body: "IBM Plex Sans", mono: "IBM Plex Mono" }, { display: "Schibsted Grotesk", body: "Schibsted Grotesk", mono: "JetBrains Mono" }],
+    radius: { control: 8, panel: 12 }, density: "medium",
+    layout: "Left-aligned, two-column hero: promise and install command on the left, a live or real output panel on the right. Docs-like sections below: setup tabs per client, a definition list of capabilities, then reference tables.",
+    hero: "Show the product working: a real command and its real output, or a live console that calls the API. Not an illustration of a laptop.",
+    avoid: ["Near-black background with one acid-green accent (the default 'hacker' look)", "Terminal window chrome with fake traffic-light dots as decoration", "Monospace for body text or labels", "Gradient mesh behind the hero"] },
+  { id: "saas-dashboard", match: ["dashboard", "admin", "analytics", "crm", "b2b", "internal tool", "back office", "saas app", "metrics"],
+    hue: 245, chroma: 0.11, accentHue: 30, neutralHue: 250, neutralChroma: 0.008,
+    fonts: [{ display: "Inter Tight", body: "Inter", mono: "JetBrains Mono" }, { display: "Public Sans", body: "Public Sans", mono: "IBM Plex Mono" }],
+    radius: { control: 6, panel: 10 }, density: "dense",
+    layout: "App shell: 240px sidebar, 56px top bar, content grid of 12 columns. Tables are the main surface; cards only for KPIs. Filters sit above the table, not in a modal.",
+    hero: "No hero. The first screen is the most-used table or the one number the user checks daily, with its trend.",
+    avoid: ["KPI cards with decorative sparkline gradients", "Every widget in its own shadowed card", "Color as the only status signal", "Charts without units or time range"] },
+  { id: "fintech", match: ["fintech", "finance", "bank", "payment", "invest", "accounting", "tax", "insurance", "crypto", "budget"],
+    hue: 200, chroma: 0.09, accentHue: 145, neutralHue: 220, neutralChroma: 0.01,
+    fonts: [{ display: "Manrope", body: "Manrope", mono: "IBM Plex Mono" }, { display: "Fraunces", body: "Source Sans 3", mono: "Source Code Pro" }],
+    radius: { control: 8, panel: 14 }, density: "medium",
+    layout: "Calm, centered column up to 1120px; numbers right-aligned with tabular figures; trust signals (licences, security) next to the action they reassure, not in a footer strip.",
+    hero: "One concrete number the customer cares about (fee, rate, time to payout) with its condition written next to it.",
+    avoid: ["Neon gradients and 3D coins", "Fine print in low-contrast gray", "Green/red as the only up/down signal"] },
+  { id: "health", match: ["health", "medical", "clinic", "therapy", "wellness", "care", "nurse", "pharmacy", "mental"],
+    hue: 185, chroma: 0.07, accentHue: 25, neutralHue: 200, neutralChroma: 0.01,
+    fonts: [{ display: "Figtree", body: "Figtree", mono: "IBM Plex Mono" }, { display: "Literata", body: "Atkinson Hyperlegible", mono: "IBM Plex Mono" }],
+    radius: { control: 10, panel: 16 }, density: "spacious",
+    layout: "Single readable column (65ch) for content, large tap targets, step-by-step forms with one question per screen on mobile.",
+    hero: "Plain-language statement of what the service does and who it is for, with the first step (book, check, call) as the only primary action.",
+    avoid: ["Stock photos of smiling doctors", "Medical blue on blue", "Long forms on one screen"] },
+  { id: "education", match: ["education", "learn", "course", "exam", "test prep", "school", "quiz", "study", "language", "tutor"],
+    hue: 265, chroma: 0.12, accentHue: 75, neutralHue: 260, neutralChroma: 0.01,
+    fonts: [{ display: "Lexend", body: "Lexend", mono: "JetBrains Mono" }, { display: "Fraunces", body: "Atkinson Hyperlegible", mono: "JetBrains Mono" }],
+    radius: { control: 10, panel: 16 }, density: "medium",
+    layout: "Start the practice on the first screen. Progress is always visible; explanations appear right after an answer, not on a separate page.",
+    hero: "A real first question the visitor can answer immediately, with instant feedback.",
+    avoid: ["Mascot illustrations that add nothing", "Gamified confetti on every click", "Walls of text before the first exercise"] },
+  { id: "ecommerce", match: ["shop", "store", "ecommerce", "e-commerce", "product page", "fashion", "retail", "marketplace", "dropship"],
+    hue: 20, chroma: 0.12, accentHue: 210, neutralHue: 40, neutralChroma: 0.008,
+    fonts: [{ display: "DM Serif Display", body: "DM Sans", mono: "DM Mono" }, { display: "Syne", body: "Inter", mono: "JetBrains Mono" }],
+    radius: { control: 6, panel: 8 }, density: "medium",
+    layout: "Product imagery leads; price, variant picker and add-to-cart stay in view on mobile (sticky bottom bar). Reviews and shipping facts sit near the buy button.",
+    hero: "The product photographed in use, with price and the main reason to buy beside it.",
+    avoid: ["Fake countdown timers", "Discount badges on everything", "Carousel as the hero"] },
+  { id: "gift-creative", match: ["gift", "personalized", "custom song", "wedding", "memorial", "anniversary", "birthday", "photo gift", "keepsake", "romantic"],
+    hue: 350, chroma: 0.11, accentHue: 70, neutralHue: 20, neutralChroma: 0.012,
+    fonts: [{ display: "Young Serif", body: "Nunito Sans", mono: "IBM Plex Mono" }, { display: "Gloock", body: "Karla", mono: "IBM Plex Mono" }],
+    radius: { control: 999, panel: 20 }, density: "spacious",
+    layout: "Story first: the occasion, a real example of the result (audio/video/photo), then the three steps to order, then price with what is included.",
+    hero: "A real finished example playing or visible on load, captioned with who it was for.",
+    avoid: ["Generic hearts and sparkles", "Pastel everything with low contrast", "Hiding the price until checkout"] },
+  { id: "game", match: ["game", "puzzle", "arcade", "wordle", "quiz game", "trivia", "play", "gaming"],
+    hue: 290, chroma: 0.16, accentHue: 95, neutralHue: 280, neutralChroma: 0.02,
+    fonts: [{ display: "Bungee", body: "Nunito", mono: "Space Mono" }, { display: "Righteous", body: "Rubik", mono: "Space Mono" }],
+    radius: { control: 12, panel: 18 }, density: "medium",
+    layout: "The game board is the first screen and is sized to fit without scrolling on a phone. Rules collapse below; stats and share after the round.",
+    hero: "The playable board itself.",
+    avoid: ["Ads or banners above the board", "Tiny tap targets on mobile", "Explaining the rules before letting people play"] },
+  { id: "editorial", match: ["blog", "magazine", "news", "article", "docs", "documentation", "guide", "review site", "directory"],
+    hue: 30, chroma: 0.06, accentHue: 220, neutralHue: 60, neutralChroma: 0.006,
+    fonts: [{ display: "Newsreader", body: "Newsreader", mono: "IBM Plex Mono" }, { display: "Instrument Serif", body: "Inter", mono: "IBM Plex Mono" }],
+    radius: { control: 4, panel: 6 }, density: "medium",
+    layout: "Reading column of 60–70ch, generous line-height, a sticky table of contents on wide screens, summary box at the top.",
+    hero: "The headline and a one-paragraph answer; author and updated date directly under it.",
+    avoid: ["Cream background with terracotta accent and serif display (the default AI 'editorial' look)", "Hairline-rule newspaper grid used as decoration", "Drop caps everywhere"] },
+  { id: "ai-tool", match: ["ai tool", "generator", "ai video", "ai image", "text to", "image to", "photo to", "to video", "converter", "maker", "online tool", "free tool"],
+    hue: 275, chroma: 0.15, accentHue: 190, neutralHue: 270, neutralChroma: 0.012,
+    fonts: [{ display: "Sora", body: "Inter", mono: "JetBrains Mono" }, { display: "Onest", body: "Onest", mono: "JetBrains Mono" }],
+    radius: { control: 10, panel: 16 }, density: "medium",
+    layout: "The tool is the hero: input on the left (or top on mobile), result on the right. Examples of real outputs right under the tool, then how-to, then FAQ.",
+    hero: "The working input box with a prefilled example and a visible sample result.",
+    avoid: ["Purple-to-blue gradient blob behind a headline", "Sign-up wall before the first result", "'Unlock the power of AI' copy"] },
+  { id: "local-service", match: ["restaurant", "cafe", "salon", "plumber", "lawyer", "agency", "local", "real estate", "hotel", "studio"],
+    hue: 140, chroma: 0.08, accentHue: 40, neutralHue: 90, neutralChroma: 0.01,
+    fonts: [{ display: "Bricolage Grotesque", body: "Work Sans", mono: "IBM Plex Mono" }, { display: "Playfair Display", body: "Lato", mono: "IBM Plex Mono" }],
+    radius: { control: 8, panel: 12 }, density: "spacious",
+    layout: "Phone, address, opening hours and the booking action reachable in one tap on mobile. Real photos of the place and the team.",
+    hero: "A real photo of the place or work with the one action (call, book, get a quote).",
+    avoid: ["Stock photography", "Contact info only in the footer", "Auto-playing video backgrounds"] },
+  { id: "kids", match: ["kids", "children", "child", "toddler", "parent", "family", "toy"],
+    hue: 60, chroma: 0.14, accentHue: 220, neutralHue: 70, neutralChroma: 0.01,
+    fonts: [{ display: "Baloo 2", body: "Nunito", mono: "Space Mono" }, { display: "Fredoka", body: "Nunito", mono: "Space Mono" }],
+    radius: { control: 16, panel: 24 }, density: "spacious",
+    layout: "Large, friendly controls; content for parents (safety, price, age) clearly separated from content for kids.",
+    hero: "The activity itself, big and tappable.",
+    avoid: ["Low-contrast pastel text", "Dark patterns around purchases", "Tiny text for parents' info"] },
+];
+const TONES = { playful: { chroma: 1.25, radius: 1.4 }, calm: { chroma: 0.75, radius: 1.1 }, premium: { chroma: 0.7, radius: 0.6 }, technical: { chroma: 0.9, radius: 0.8 }, bold: { chroma: 1.3, radius: 0.9 }, trustworthy: { chroma: 0.8, radius: 1 } };
+
+function pickPreset(text) {
+  const t = String(text || "").toLowerCase();
+  let best = null, bs = 0;
+  for (const p of PRESETS) { const sc = p.match.filter(m => t.includes(m)).reduce((a, m) => a + m.split(" ").length, 0); if (sc > bs) { bs = sc; best = p; } }
+  return { preset: best || PRESETS.find(p => p.id === "ai-tool"), matched: !!best };
+}
+
+function buildPalette({ hue, chroma, accentHue, neutralHue, neutralChroma }, brand) {
+  if (brand) { const o = rgbToOklch(brand); hue = o.h; chroma = Math.max(0.04, Math.min(0.2, o.C)); neutralHue = o.h; neutralChroma = 0.004; accentHue = (o.h + 150) % 360; }
+  const mk = (mode) => {
+    const dark = mode === "dark";
+    const bg = okl(dark ? 0.17 : 0.985, neutralChroma * (dark ? 1.2 : 0.6), neutralHue);
+    const surface = okl(dark ? 0.215 : 1.0, neutralChroma * (dark ? 1.2 : 0), neutralHue);
+    const raised = okl(dark ? 0.25 : 0.965, neutralChroma * 1.2, neutralHue);
+    const border = okl(dark ? 0.34 : 0.9, neutralChroma * 1.5, neutralHue);
+    const text = fitL(dark ? 0.95 : 0.22, neutralChroma * 2, neutralHue, bg, 12, dark ? 1 : -1).color;
+    const muted = fitL(dark ? 0.75 : 0.48, neutralChroma * 2.5, neutralHue, raised, 4.6, dark ? 1 : -1).color;
+    const primaryRes = fitL(dark ? 0.74 : 0.55, chroma, hue, bg, 3.2, dark ? 1 : -1); // as fill / large text
+    const primary = primaryRes.color;
+    const onPrimary = contrast(okl(0.99, 0, 0), primary) >= contrast(okl(0.18, 0.02, hue), primary) ? okl(0.99, 0, 0) : okl(0.18, 0.02, hue);
+    const primaryText = fitL(primaryRes.L, chroma, hue, bg, 4.6, dark ? 1 : -1).color; // links, small text in brand color
+    const accent = fitL(dark ? 0.78 : 0.62, chroma * 0.9, accentHue, bg, 3.0, dark ? 1 : -1).color;
+    const sem = (h) => fitL(dark ? 0.78 : 0.5, 0.13, h, bg, 4.6, dark ? 1 : -1).color;
+    const P = { bg, surface, raised, border, text, muted, primary, "on-primary": onPrimary, "primary-text": primaryText, accent, success: sem(150), warning: sem(65), danger: sem(25) };
+    const out = {}; for (const k in P) out[k] = toHex(P[k]);
+    // enforce on-primary >= 4.5 by darkening/lightening primary if needed
+    if (contrast(parseColor(out["on-primary"]), parseColor(out.primary)) < 4.5) out.primary = fixForeground(parseColor(out.primary), parseColor(out["on-primary"]), 4.5);
+    const checks = [
+      ["text", "bg"], ["text", "surface"], ["muted", "bg"], ["muted", "surface"], ["muted", "raised"], ["primary-text", "bg"], ["primary-text", "surface"], ["on-primary", "primary"], ["success", "bg"], ["warning", "bg"], ["danger", "bg"],
+    ].map(([f, b]) => { const r = contrast(parseColor(out[f]), parseColor(out[b])); return { fg: f, bg: b, ratio: +r.toFixed(2), aa_text: r >= 4.5 }; });
+    checks.push({ fg: "border", bg: "bg", ratio: +contrast(parseColor(out.border), parseColor(out.bg)).toFixed(2), note: "decorative divider; inputs need a 3:1 outline, use --muted for input borders" });
+    return { tokens: out, contrast_checks: checks };
+  };
+  return { light: mk("light"), dark: mk("dark") };
+}
+
+const SCALE = (density) => {
+  const base = density === "dense" ? 15 : density === "spacious" ? 18 : 16;
+  const r = density === "dense" ? 1.2 : 1.25;
+  const s = [-2, -1, 0, 1, 2, 3, 4, 5].map(i => Math.max(i === -2 ? 12 : i === -1 ? 14 : 0, Math.round(base * Math.pow(r, i))));
+  return { base_px: base, ratio: r, steps_px: { xs: s[0], sm: s[1], base: s[2], lg: s[3], xl: s[4], "2xl": s[5], "3xl": s[6], "4xl": s[7] }, line_height: { body: density === "dense" ? 1.45 : 1.6, heading: 1.15 }, measure: "60-75ch for body text", note: "Fixed px steps with a breakpoint jump for h1; do not scale fonts with vw." };
+};
+
+export function designDirection(args = {}) {
+  const brief = [args.product, args.audience, args.tone, args.notes].filter(Boolean).join(" ");
+  if (!brief.trim()) return { error: "Describe the product in `product`, e.g. 'landing page for a free remote MCP server for developers'." };
+  const { preset, matched } = pickPreset(args.domain || brief);
+  const tone = TONES[String(args.tone || "").toLowerCase()] || null;
+  let brand = null;
+  if (args.brand_color) { brand = parseColor(args.brand_color); if (!brand) return { error: `Could not read brand_color "${args.brand_color}". Use hex like #2563eb, rgb() or oklch().` }; }
+  const p = { ...preset, chroma: preset.chroma * (tone ? tone.chroma : 1) };
+  const palette = buildPalette(p, brand);
+  const density = args.density || preset.density;
+  const rad = (n) => Math.round(n * (tone ? tone.radius : 1));
+  const fontPair = preset.fonts[(args.variant === 2 ? 1 : 0)] || preset.fonts[0];
+  const css = (mode, sel) => `${sel}{\n${Object.entries(palette[mode].tokens).map(([k, v]) => `  --color-${k}:${v};`).join("\n")}\n}`;
+  const cssVars = `${css("light", ":root")}\n${css("dark", ".dark, [data-theme=dark]")}\n@media (prefers-color-scheme: dark){:root:not(.light){${Object.entries(palette.dark.tokens).map(([k, v]) => `--color-${k}:${v};`).join("")}}}\n:root{\n  --font-display:"${fontPair.display}",system-ui,sans-serif;\n  --font-body:"${fontPair.body}",system-ui,sans-serif;\n  --font-mono:"${fontPair.mono}",ui-monospace,monospace;\n  --radius-control:${rad(preset.radius.control)}px;\n  --radius-panel:${rad(preset.radius.panel)}px;\n  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;\n}`;
+  return {
+    brief, preset: preset.id, preset_matched: matched, tone: args.tone || null, brand_color: args.brand_color || null,
+    palette, css_variables: cssVars,
+    typography: { ...fontPair, source: "Google Fonts (free). Self-host the woff2 files; load at most two families plus mono.", scale: SCALE(density) },
+    radius: { control: rad(preset.radius.control), panel: rad(preset.radius.panel), rule: "Smaller radius on small controls, larger on big panels; never one radius for everything." },
+    density, layout: preset.layout, hero: preset.hero,
+    avoid: [...preset.avoid, "Tracked-out ALL-CAPS eyebrow labels above every heading", "Identical rounded cards with the same soft shadow for every section", "Accenting one word of the headline in a different color or italic", "Arrows appended to every button and link"],
+    next_steps: ["Paste css_variables into your stylesheet and reference only the tokens.", "Build the hero as described, with real content.", "Run lint_design on the HTML/CSS before shipping; fix every error.", "Use get_design_pipeline for the skills to install for the rest of the build."],
+  };
+}
+
+export function checkContrast(args = {}) {
+  let pairs = args.pairs;
+  if (!Array.isArray(pairs) && args.foreground && args.background) pairs = [{ fg: args.foreground, bg: args.background }];
+  if (!Array.isArray(pairs) || !pairs.length) return { error: "Pass pairs: [{ fg: '#777', bg: '#fff' }] (hex, rgb(), hsl() or oklch())." };
+  const results = pairs.slice(0, 50).map(p => {
+    const f = parseColor(p.fg ?? p.foreground), b = parseColor(p.bg ?? p.background);
+    if (!f || !b) return { fg: p.fg, bg: p.bg, error: "unreadable color" };
+    const r = contrast(f, b);
+    const large = !!p.large_text;
+    const need = large ? 3 : 4.5;
+    return { fg: p.fg, bg: p.bg, ratio: +r.toFixed(2), aa: r >= need, aaa: r >= (large ? 4.5 : 7), ui_component_3to1: r >= 3,
+      fixed_fg: r >= need ? null : fixForeground(f, b, need + 0.05) };
+  });
+  return { results, rule: "WCAG 2.x: normal text 4.5:1 (AA) / 7:1 (AAA); large text (24px, or 18.66px bold) 3:1 / 4.5:1; UI components and focus rings 3:1." };
+}
+
+// ---------- lint ----------
+function parseHTML(html) {
+  const tags = []; const re = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g; let m, last = 0;
+  const texts = [];
+  while ((m = re.exec(html))) {
+    if (m.index > last) texts.push({ i: last, text: html.slice(last, m.index) });
+    last = re.lastIndex;
+    if (!m[2]) continue;
+    const name = m[2].toLowerCase(), close = !!m[1];
+    const attrs = {}; const ar = /([^\s=/]+)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+)))?/g; let a;
+    while ((a = ar.exec(m[3] || ""))) attrs[a[1].toLowerCase()] = a[3] ?? a[4] ?? a[5] ?? "";
+    tags.push({ name, close, attrs, i: m.index, raw: m[0] });
+    if (!close && (name === "script" || name === "style")) {
+      const end = html.indexOf(`</${name}`, re.lastIndex);
+      if (end > -1) { tags[tags.length - 1].content = html.slice(re.lastIndex, end); re.lastIndex = end; last = end; }
+    }
+  }
+  return { tags, texts };
+}
+const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+function textOf(html, start, name) {
+  // inner text of element starting at tag index `start` (best effort)
+  const open = html.indexOf(">", start) + 1; let depth = 1, i = open; const re = new RegExp(`<(/?)${name}\\b[^>]*>`, "gi"); re.lastIndex = open; let m;
+  while ((m = re.exec(html))) { depth += m[1] ? -1 : 1; if (depth === 0) { i = m.index; break; } }
+  return html.slice(open, i);
+}
+const strip = s => s.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
+const lineOf = (src, i) => src.slice(0, i).split("\n").length;
+
+function cssRules(css) {
+  const out = []; const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const re = /([^{}@]+)\{([^{}]*)\}/g; let m;
+  while ((m = re.exec(clean))) {
+    const decl = {}; m[2].split(";").forEach(d => { const k = d.indexOf(":"); if (k > 0) decl[d.slice(0, k).trim().toLowerCase()] = d.slice(k + 1).trim(); });
+    out.push({ sel: m[1].trim(), decl, i: m.index });
+  }
+  return out;
+}
+function resolveVars(val, vars, depth = 0) {
+  if (!val || depth > 5) return val;
+  return val.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (_, n, fb) => resolveVars(vars[n] ?? fb ?? "", vars, depth + 1));
+}
+function firstColor(v) {
+  if (!v) return null;
+  const m = v.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|\b(?:white|black)\b/);
+  return m ? parseColor(m[0]) : null;
+}
+
+const BUZZ = /\b(unlock|supercharge|revolutioni[sz]e|seamless(?:ly)?|elevate your|unleash|game[- ]changer|next[- ]level|cutting[- ]edge|harness the power|in today's fast-paced|effortlessly)\b/gi;
+
+export function lintDesign(args = {}) {
+  const html = String(args.html || "");
+  let css = String(args.css || "");
+  if (!html.trim() && !css.trim()) return { error: "Pass `html` (a page or fragment) and optionally `css`. Inline <style> blocks are read too." };
+  if (html.length + css.length > 400000) return { error: "Input over 400 KB. Lint one page or section at a time." };
+  const F = []; const add = (severity, rule, message, fix, at) => F.push({ severity, rule, message, fix, ...(at != null ? { line: at } : {}) });
+  const { tags } = parseHTML(html);
+  const src = html;
+  tags.filter(t => t.name === "style" && !t.close && t.content).forEach(t => { css += "\n" + t.content; });
+  const styleAttrs = tags.filter(t => t.attrs.style).map(t => `x{${t.attrs.style}}`).join("\n");
+  const rules = cssRules(css + "\n" + styleAttrs);
+  const vars = {}; rules.forEach(r => { for (const k in r.decl) if (k.startsWith("--")) vars[k] = vars[k] ?? r.decl[k]; });
+
+  // --- accessibility: structure
+  const isDoc = /<html[\s>]/i.test(html);
+  if (isDoc) {
+    const h = tags.find(t => t.name === "html" && !t.close);
+    if (h && !h.attrs.lang) add("error", "html-lang", "<html> has no lang attribute.", 'Add lang="en" (or the page language).', lineOf(src, h.i));
+    if (!tags.some(t => t.name === "main")) add("warn", "landmark-main", "No <main> landmark.", "Wrap the primary content in <main>.");
+    const vp = tags.find(t => t.name === "meta" && (t.attrs.name || "").toLowerCase() === "viewport");
+    if (!vp) add("error", "viewport", "No viewport meta tag; the page will not be responsive on phones.", '<meta name="viewport" content="width=device-width,initial-scale=1">');
+    else if (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/i.test(vp.attrs.content || "")) add("error", "zoom-disabled", "Viewport disables zoom.", "Remove user-scalable=no and maximum-scale=1.", lineOf(src, vp.i));
+    if (!tags.some(t => t.name === "title")) add("error", "title", "No <title>.", "Add a descriptive <title>.");
+  }
+  const heads = tags.filter(t => /^h[1-6]$/.test(t.name) && !t.close);
+  const h1s = heads.filter(t => t.name === "h1");
+  if (isDoc && h1s.length === 0) add("warn", "h1-missing", "No <h1> on the page.", "Give the page one <h1> that says what it is.");
+  if (h1s.length > 1) add("warn", "h1-multiple", `${h1s.length} <h1> elements.`, "Keep one <h1>; demote the others to <h2>.", lineOf(src, h1s[1].i));
+  let prev = 0; heads.forEach(t => { const lv = +t.name[1]; if (prev && lv > prev + 1) add("error", "heading-skip", `Heading jumps from h${prev} to h${lv}.`, `Use h${prev + 1}, or style a lower level to look smaller.`, lineOf(src, t.i)); prev = lv; });
+  heads.forEach(t => { if (!strip(textOf(src, t.i, t.name))) add("error", "heading-empty", `Empty <${t.name}>.`, "Give the heading text or remove it.", lineOf(src, t.i)); });
+
+  // images
+  tags.filter(t => t.name === "img" && !t.close).forEach(t => {
+    if (!("alt" in t.attrs)) add("error", "img-alt", `<img src="${(t.attrs.src || "").slice(0, 60)}"> has no alt.`, 'Describe the image in alt, or alt="" if decorative.', lineOf(src, t.i));
+    if (!t.attrs.width || !t.attrs.height) add("warn", "img-size", "<img> without width and height causes layout shift.", "Add width and height attributes (CSS can still resize).", lineOf(src, t.i));
+  });
+  tags.filter(t => t.name === "svg" && !t.close).forEach(t => { if (!t.attrs["aria-hidden"] && !t.attrs["aria-label"] && !t.attrs.role) { const inner = textOf(src, t.i, "svg"); if (!/<title/i.test(inner)) add("tip", "svg-a11y", "Inline <svg> without aria-hidden or a title.", 'Decorative: aria-hidden="true". Meaningful: role="img" plus aria-label.', lineOf(src, t.i)); } });
+
+  // controls
+  const labelsFor = new Set(tags.filter(t => t.name === "label" && t.attrs.for).map(t => t.attrs.for));
+  const openLabels = []; const stack = [];
+  tags.forEach(t => {
+    if (t.name === "label") { if (!t.close) openLabels.push(t); else openLabels.pop(); return; }
+    if (["input", "select", "textarea"].includes(t.name) && !t.close) {
+      const type = (t.attrs.type || "text").toLowerCase();
+      if (["hidden", "submit", "button", "reset", "image"].includes(type)) return;
+      const named = t.attrs["aria-label"] || t.attrs["aria-labelledby"] || (t.attrs.id && labelsFor.has(t.attrs.id)) || openLabels.length || t.attrs.title;
+      if (!named) add("error", "input-label", `<${t.name}${t.attrs.name ? ` name="${t.attrs.name}"` : ""}> has no label${t.attrs.placeholder ? " (a placeholder is not a label)" : ""}.`, "Add <label for=id> or wrap the control in <label>.", lineOf(src, t.i));
+      if (type === "email" || /email/i.test(t.attrs.name || "")) { if (!t.attrs.autocomplete) add("tip", "autocomplete", "Email input without autocomplete.", 'autocomplete="email".', lineOf(src, t.i)); }
+    }
+  });
+  tags.filter(t => (t.name === "button" || t.name === "a") && !t.close).forEach(t => {
+    const inner = textOf(src, t.i, t.name); const txt = strip(inner);
+    const hasAlt = /<img[^>]+alt="[^"]+"/i.test(inner) || /aria-label=/i.test(inner);
+    if (!txt && !t.attrs["aria-label"] && !t.attrs["aria-labelledby"] && !t.attrs.title && !hasAlt) add("error", t.name === "a" ? "link-name" : "button-name", `<${t.name}> has no accessible name (icon only?).`, "Add visible text or aria-label.", lineOf(src, t.i));
+    if (t.name === "a" && !("href" in t.attrs) && (t.attrs.onclick || t.attrs.role === "button")) add("error", "link-as-button", "<a> without href used as a button.", "Use <button type=button> for actions.", lineOf(src, t.i));
+    if (t.name === "a" && /^\s*(click here|here|read more|learn more|more)\s*$/i.test(txt)) add("warn", "link-text", `Vague link text "${txt}".`, "Say where the link goes, e.g. 'Read the pricing guide'.", lineOf(src, t.i));
+    if (/(→|->|»)\s*$/.test(txt)) add("tip", "arrow-cta", `"${txt}" ends with an arrow.`, "Drop the decorative arrow; a clear verb is enough.", lineOf(src, t.i));
+  });
+  tags.filter(t => ["div", "span", "li", "p", "img"].includes(t.name) && !t.close && t.attrs.onclick).forEach(t => add("error", "click-non-button", `<${t.name} onclick> is not keyboard accessible.`, "Use <button> (actions) or <a href> (navigation).", lineOf(src, t.i)));
+  tags.filter(t => !t.close && t.attrs.tabindex && +t.attrs.tabindex > 0).forEach(t => add("warn", "tabindex-positive", `tabindex="${t.attrs.tabindex}" breaks the natural tab order.`, 'Use tabindex="0" or rely on DOM order.', lineOf(src, t.i)));
+  tags.filter(t => (t.name === "video" || t.name === "audio") && !t.close && "autoplay" in t.attrs && !("muted" in t.attrs)).forEach(t => add("error", "autoplay-sound", "Media autoplays with sound.", "Add muted, or do not autoplay.", lineOf(src, t.i)));
+  const ids = {}; tags.forEach(t => { if (!t.close && t.attrs.id) ids[t.attrs.id] = (ids[t.attrs.id] || 0) + 1; });
+  Object.entries(ids).filter(([, n]) => n > 1).forEach(([id, n]) => add("error", "duplicate-id", `id="${id}" is used ${n} times.`, "Ids must be unique (labels and ARIA rely on them)."));
+
+  // --- CSS checks
+  let outlineNone = false; const focusVisible = rules.some(r => /:focus(-visible|-within)?\b/.test(r.sel) && ((r.decl.outline && !/^(none|0)\b/.test(r.decl.outline)) || r.decl["box-shadow"] || r.decl["outline-color"] || r.decl.border || r.decl["border-color"]));
+  const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0;
+  rules.forEach(r => {
+    const d = r.decl;
+    if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
+    const ff = d["font-family"] || (d.font && d.font.match(/(?:\d+px|\d+(?:\.\d+)?rem|\d+(?:\.\d+)?em)(?:\/[\d.]+)?\s+(.+)$/)?.[1]);
+    if (ff) { const first = resolveVars(ff, vars).split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^(inherit|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first)) fams.add(first); }
+    for (const k in d) { const v = resolveVars(d[k], vars); (v.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g) || []).forEach(c => { const p = parseColor(c); if (p) colors.add(toHex(p)); }); }
+    for (const k of ["background", "background-color"]) { const c = firstColor(resolveVars(d[k], vars)); if (c && (r.sel.match(/\b(body|html|main|:root)\b/) || /^\.?[\w-]+$/.test(r.sel))) bgColors.add(toHex(c)); }
+    for (const k in d) if (/^--(color-)?(bg|background|paper|page)$/.test(k)) { const c = firstColor(resolveVars(d[k], vars)); if (c) bgColors.add(toHex(c)); }
+    if (/uppercase/.test(d["text-transform"] || "") && parseFloat(d["letter-spacing"] || "0") > 0.04) uppercaseTracked++;
+    for (const k of ["background", "background-image"]) if (/gradient\(/.test(d[k] || "")) gradients++;
+    if (/\d(\.\d+)?vw/.test(d["font-size"] || "") && !/clamp\(/.test(d["font-size"])) vwFont++;
+    if (/\ball\b/.test(d.transition || "") || /\ball\b/.test(d["transition-property"] || "")) transAll++;
+    if (/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.(0[5-9]|1|15)\)/.test(d["box-shadow"] || "")) softShadow++;
+    // contrast of color/background declared in same rule
+    const fg = firstColor(resolveVars(d.color, vars)), bg = firstColor(resolveVars(d["background-color"] || d.background, vars));
+    if (fg && bg) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text).`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
+  });
+  // token pair contrast: --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)
+  rules.forEach(r => {
+    const keys = Object.keys(r.decl).filter(k => k.startsWith("--"));
+    const fgK = keys.filter(k => /^--(color-)?(text|ink|muted|fg|foreground|text-muted|muted-foreground)$/.test(k)), bgK = keys.filter(k => /^--(color-)?(bg|background|surface|paper|well|raised|card)$/.test(k));
+    fgK.forEach(f => bgK.forEach(b => { const fc = firstColor(resolveVars(r.decl[f], vars)), bc = firstColor(resolveVars(r.decl[b], vars)); if (fc && bc) { const cr = contrast(fc, bc); if (cr < 4.5) add("error", "token-contrast", `Theme "${r.sel.slice(0, 40)}": ${f} on ${b} is ${cr.toFixed(2)}:1.`, `Set ${f} to ${fixForeground(fc, bc, 4.6)}.`); } }));
+  });
+  if (outlineNone && !focusVisible) add("error", "focus-removed", "outline is removed and no :focus-visible style replaces it.", ":focus-visible{outline:2px solid <brand>;outline-offset:2px}");
+  if (!focusVisible && tags.some(t => ["button", "a", "input"].includes(t.name))) add("warn", "focus-style", "No :focus-visible style; keyboard users rely on the browser default.", "Add a visible :focus-visible ring that matches the design.");
+  if (!/prefers-reduced-motion/.test(css) && /(animation\s*:|@keyframes|transition\s*:)/.test(css)) add("warn", "reduced-motion", "Animations or transitions without a prefers-reduced-motion rule.", "@media (prefers-reduced-motion: reduce){ ... }");
+  if (transAll) add("warn", "transition-all", `transition: all used ${transAll}x.`, "List the properties (opacity, transform, color).");
+  if (vwFont) add("warn", "vw-font", "font-size in vw without clamp(): text will not respect zoom and gets tiny on phones.", "Use fixed px/rem steps with a breakpoint, or clamp(min, vw, max).");
+  if (fams.size > 3) add("warn", "too-many-fonts", `${fams.size} font families: ${[...fams].join(", ")}.`, "Use one or two families plus a mono.");
+  if (colors.size > 30) add("warn", "too-many-colors", `${colors.size} distinct colors in CSS.`, "Collapse to a token palette (bg, surface, text, muted, border, primary, accent, success/warning/danger).");
+
+  // --- generic AI-design tells
+  const colorList = [...colors].map(parseColor).filter(Boolean);
+  const cream = [...bgColors].map(parseColor).some(c => { const o = rgbToOklch(c); return o.L > 0.92 && o.L < 0.985 && o.C > 0.008 && o.C < 0.04 && o.h > 55 && o.h < 105; });
+  const terra = colorList.some(c => { const o = rgbToOklch(c); return o.L > 0.55 && o.L < 0.75 && o.C > 0.1 && o.h > 28 && o.h < 52; });
+  if (cream && terra) add("warn", "tell-cream-terracotta", "Cream background with a terracotta accent: the most common generated-page palette.", "Pick a palette from the product's own world (design_direction gives one).");
+  const acid = colorList.some(c => { const o = rgbToOklch(c); return o.C > 0.18 && o.h > 115 && o.h < 150 && o.L > 0.8; }), nearBlack = colorList.some(c => { const o = rgbToOklch(c); return o.L < 0.2 && o.C < 0.02; });
+  if (acid && nearBlack) add("tip", "tell-acid-on-black", "Near-black with an acid-green accent: a stock 'developer' look.", "Use it only if the brand really is that.");
+  if (uppercaseTracked >= 3) add("warn", "tell-eyebrows", `${uppercaseTracked} tracked-out uppercase label styles (eyebrows above headings).`, "Remove eyebrows that only repeat the heading; let the heading carry the section.");
+  if (gradients >= 3) add("warn", "tell-gradients", `${gradients} gradient backgrounds.`, "Use gradients only where they mean something (e.g. a data range).");
+  if (softShadow >= 4) add("tip", "tell-card-kit", `The same soft shadow appears on ${softShadow} rules (the SaaS card kit).`, "Vary hierarchy with spacing, borders and size instead of shadowing every box.");
+  const visible = strip(html);
+  const dots = (visible.match(/ · /g) || []).length; if (dots >= 3) add("tip", "tell-middots", `${dots} middle-dot separators in text.`, "Write the metadata as a sentence or a real list.");
+  const numbered = (visible.match(/(^|\s)0[1-9](\s|\.|\/)/g) || []).length; if (numbered >= 3) add("tip", "tell-numbering", "01 / 02 / 03 style numbering.", "Use numbers only when the content is a real sequence.");
+  const buzz = [...new Set((visible.match(BUZZ) || []).map(s => s.toLowerCase()))]; if (buzz.length) add("warn", "copy-buzzwords", `Template copy: ${buzz.join(", ")}.`, "Say what the product does, for whom, with a number or example.");
+  if (/lorem ipsum/i.test(visible)) add("error", "copy-placeholder", "Lorem ipsum left in the page.", "Write real copy.");
+  if (/\.\.\.(?!\w)/.test(visible)) add("tip", "typography-ellipsis", 'Three dots "..." instead of an ellipsis.', "Use …");
+
+  const order = { error: 0, warn: 1, tip: 2 };
+  // group repeats of the same rule
+  const G = []; const byRule = {};
+  for (const f of F) {
+    const k = f.rule + "|" + (["contrast", "token-contrast", "heading-skip", "input-label", "button-name", "link-name"].includes(f.rule) ? f.message : "");
+    if (byRule[k]) { byRule[k].count++; if (f.line && byRule[k].lines.length < 10) byRule[k].lines.push(f.line); continue; }
+    byRule[k] = { ...f, count: 1, lines: f.line ? [f.line] : [] }; delete byRule[k].line; G.push(byRule[k]);
+  }
+  F.length = 0; G.forEach(g => { if (!g.lines.length) delete g.lines; F.push(g); });
+  F.sort((a, b) => order[a.severity] - order[b.severity]);
+  const counts = { error: F.filter(f => f.severity === "error").length, warn: F.filter(f => f.severity === "warn").length, tip: F.filter(f => f.severity === "tip").length };
+  const score = Math.max(0, 100 - counts.error * 12 - counts.warn * 4 - counts.tip * 1);
+  return { score, counts, verdict: counts.error ? "Fix the errors before shipping." : counts.warn ? "Shippable; the warnings are worth fixing." : "Clean.", findings: F,
+    stats: { font_families: [...fams], distinct_colors: colors.size, headings: heads.map(h => h.name).join(" > ") },
+    limits: "Static check of markup and CSS. It cannot see rendered layout, real contrast over images, or keyboard traps in scripts; check those in a browser." };
+}
+
+const CHECKLISTS = {
+  "before-build": ["Write the brief: product, audience, the one job of the page, device mix.", "Get tokens from design_direction (or the brand) and use only tokens in components.", "Decide the hero from the product's own world: a live demo, the real output, the product in use.", "Pick at most two font families plus a mono; self-host them.", "Plan the mobile layout first: what is on the first screen at 390px?", "List the states: empty, loading, error, success, long content."],
+  "pre-launch": ["lint_design shows 0 errors.", "Every text/background pair is 4.5:1 or better (3:1 for 24px+ text and UI outlines).", "Tab through the page: visible focus everywhere, order matches the layout, no traps.", "390px wide: no horizontal scroll, tap targets 44px, primary action reachable.", "200% zoom still usable; fonts not sized in raw vw.", "prefers-reduced-motion respected; nothing autoplays with sound.", "Images have alt and width/height; below-the-fold images lazy-load.", "Title, meta description and one h1 say what the page is; headings do not skip levels.", "Copy: no template buzzwords, numbers have a source, buttons say what they do.", "Dark mode (if offered): run check_contrast on the dark tokens too."],
+};
+export function designChecklist(args = {}) {
+  const stage = String(args.stage || "pre-launch").toLowerCase();
+  const list = CHECKLISTS[stage] || CHECKLISTS["pre-launch"];
+  return { stage: CHECKLISTS[stage] ? stage : "pre-launch", items: list, stages: Object.keys(CHECKLISTS) };
+}
