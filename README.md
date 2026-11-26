@@ -1,5 +1,7 @@
 # Design Skills MCP
 
+[![Design Skills MCP connector](https://glama.ai/mcp/connectors/org.antigravityskills/design-skills/badges/score.svg)](https://glama.ai/mcp/connectors/org.antigravityskills/design-skills)
+
 Free remote MCP server that lets your coding agent pick a **hand-tested UI/UX design skill** by itself.
 
 - **Endpoint:** `https://mcp.antigravityskills.org/mcp` (Streamable HTTP)
