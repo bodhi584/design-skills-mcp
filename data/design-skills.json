@@ -62,7 +62,7 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/frontend-design"
  },
  {
   "slug": "impeccable",
@@ -192,7 +192,7 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/openai/skills"
+  "source_repo": "https://github.com/openai/skills/tree/30444aed500c00c85294d12074f6e3ee794f808a/skills/.curated/frontend-skill"
  },
  {
   "slug": "superdesign",
@@ -383,7 +383,7 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/theme-factory"
  },
  {
   "slug": "brand-guidelines",
@@ -414,7 +414,7 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/brand-guidelines"
  },
  {
   "slug": "banner-design",
@@ -479,7 +479,7 @@
    "writes files",
    "network access"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/canvas-design"
  },
  {
   "slug": "html-slides",
@@ -541,7 +541,7 @@
    "acts in your accounts",
    "network access"
   ],
-  "source_repo": "https://github.com/openai/skills"
+  "source_repo": "https://github.com/openai/skills/tree/main/skills/.curated/figma-implement-design"
  },
  {
   "slug": "figma-mcp",
@@ -669,7 +669,7 @@
    "runs scripts",
    "writes files"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/web-artifacts-builder"
  },
  {
   "slug": "algorithmic-art",
@@ -700,7 +700,7 @@
    "writes files",
    "network access"
   ],
-  "source_repo": "https://github.com/anthropics/skills"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/algorithmic-art"
  },
  {
   "slug": "image-generation",
@@ -732,7 +732,7 @@
    "network access",
    "writes files"
   ],
-  "source_repo": "https://github.com/openai/skills"
+  "source_repo": "https://github.com/openai/skills/tree/main/skills/.system/imagegen"
  },
  {
   "slug": "photo-retouching",
@@ -796,6 +796,6 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/anthropics/knowledge-work-plugins"
+  "source_repo": "https://github.com/anthropics/knowledge-work-plugins/tree/main/data/skills/data-visualization"
  }
 ]
