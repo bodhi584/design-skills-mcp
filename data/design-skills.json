@@ -1,0 +1,801 @@
+[
+ {
+  "slug": "ui-ux-pro-max",
+  "name": "UI/UX Pro Max",
+  "author": "@nextlevelbuilder",
+  "summary": "Comprehensive UI/UX design intelligence skill for AI coding assistants. Injects structured design tokens, color theory, typography scales, accessibility guidelines, and component patterns into Claude Code, Cursor, and Windsurf.",
+  "tags": [
+   "media",
+   "ui",
+   "ux",
+   "design",
+   "tailwind",
+   "frontend"
+  ],
+  "reviewed": "2026-10-06",
+  "verdict": "Worth installing if you want an agent that looks design choices up in bundled style, palette and font data instead of guessing. It installed and worked in our Antigravity run (the screenshot shows the app screen it built); three install steps on this page did not match what we saw, and they are fixed.",
+  "tested": "Antigravity 2.0, desktop app 2.21.1, Gemini 3.8 Flash (High), macOS, 2026-10-13.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Landing pages and dashboards where you want a named style, palette and font pairing",
+   "Teams that want the same design rules across Antigravity, Claude Code and Cursor"
+  ],
+  "not_for": [
+   "Machines without Python 3: the search script needs it",
+   "Anyone who wants zero network calls: the plugin also installs companion skills that can call image APIs with your keys"
+  ],
+  "safety": "The core UI/UX Pro Max search scripts are offline, standard-library Python that only read bundled data and write files on explicit --persist, but the plugin and CLI also install companion design skills whose optional scripts call external AI image APIs with your keys or run npx.",
+  "safety_flags": [
+   "installs packages",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+ },
+ {
+  "slug": "frontend-design",
+  "name": "Frontend Design (Anthropic)",
+  "author": "@anthropics",
+  "summary": "Anthropic's official frontend-design skill: guidance for distinctive, intentional UI design, typography and copy that avoids templated AI defaults.",
+  "tags": [
+   "frontend",
+   "design",
+   "ui",
+   "typography",
+   "anthropic",
+   "claude-code"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "The simplest design skill we tested: one page of judgement rules, installed in about a minute, and one sentence gave a finished one-page site in about five minutes without questions.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-14.",
+  "test_result": "Works",
+  "good_for": [
+   "Getting away from the templated card-grid look on a landing page",
+   "People who want instruction-only skills with no scripts or network calls"
+  ],
+  "not_for": [
+   "Anyone who wants searchable style data or components (UI/UX Pro Max ships those)",
+   "Production use backed by a vendor: Anthropic labels its skills as demonstrations"
+  ],
+  "safety": "Instruction-only Anthropic skill with no scripts, network calls or credentials; it only guides how the agent designs and writes frontend code.",
+  "safety_flags": [
+   "instructions only",
+   "offline"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "impeccable",
+  "name": "Impeccable",
+  "author": "@pbakaus",
+  "summary": "Paul Bakaus's Impeccable design skill: one /impeccable skill with 24 design commands, live browser iteration and a 59-rule detector for AI-generated frontend patterns.",
+  "tags": [
+   "frontend",
+   "design",
+   "ui",
+   "audit",
+   "anti-patterns",
+   "accessibility"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Best for design work you want to steer: it asked three questions, showed four directions in a local page, then built the chosen one and fixed what its own detector flagged, in about ten minutes. It downloads an engine binary on first run and writes an .impeccable folder.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-14.",
+  "test_result": "Works",
+  "good_for": [
+   "Auditing or critiquing an existing page before launch",
+   "A final polish pass on forms, settings and checkout screens"
+  ],
+  "not_for": [
+   "Locked-down machines: the first run downloads a binary from GitHub",
+   "Deployed HTTPS sites: live mode is for local checkouts only"
+  ],
+  "safety": "Well-documented design skill that runs a downloaded, checksum-verified engine binary, writes .impeccable/ files and contacts impeccable.style; set IMPECCABLE_NO_TELEMETRY=1 to skip the anonymous choice report.",
+  "safety_flags": [
+   "runs scripts",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/pbakaus/impeccable"
+ },
+ {
+  "slug": "taste-skill",
+  "name": "Taste",
+  "author": "@Leonxlnx",
+  "summary": "Open-source agent skill (design-taste-frontend) that gives coding agents an art direction, real pictures and a browser check so landing pages look less generic.",
+  "tags": [
+   "ui",
+   "design",
+   "frontend",
+   "landing-page",
+   "anti-slop",
+   "art-direction"
+  ],
+  "reviewed": "2026-10-07",
+  "verdict": "The most thorough design skill in our tests: it fetched real public-domain photos, built the page and checked it in headless Chrome at three widths until nothing failed. It takes about 15 minutes and needs Node 22 and a local Chrome.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-14.",
+  "test_result": "Works",
+  "good_for": [
+   "Public landing pages and portfolios that should not look generated",
+   "Reviewing an existing page against a written list of generated-page tells"
+  ],
+  "not_for": [
+   "Dashboards and app screens: its README points to other skills for product UI",
+   "Offline machines: the picture script needs network access"
+  ],
+  "safety": "Instructions plus local Node scripts that launch a headless browser, fetch pictures from public collections and write to the project and ~/.taste-skill; no API keys needed.",
+  "safety_flags": [
+   "runs scripts",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/Leonxlnx/taste-skill"
+ },
+ {
+  "slug": "claude-design-skill",
+  "name": "Claude Design",
+  "author": "@jiji262",
+  "summary": "Instruction-only skill that makes your agent build HTML design artifacts (landing pages, decks, prototypes, animations) with set design rules and starter files.",
+  "tags": [
+   "design",
+   "html",
+   "landing-page",
+   "prototype",
+   "slide-deck",
+   "ui"
+  ],
+  "reviewed": "2026-10-07",
+  "verdict": "",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-14.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Exploring three style directions for a page when you have no brand yet",
+   "Single-file slide decks and clickable prototypes"
+  ],
+  "not_for": [
+   "Offline or locked-down projects: it fetches the web and loads CDN scripts",
+   "Production code: the output is design artifacts, not your app's components"
+  ],
+  "safety": "No scripts and no API keys needed; the main risk is the web fetching and CDN loading the instructions ask the agent to do.",
+  "safety_flags": [
+   "instructions only",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/jiji262/claude-design-skill"
+ },
+ {
+  "slug": "openai-frontend-skill",
+  "name": "OpenAI Frontend Skill",
+  "author": "@openai",
+  "summary": "OpenAI's frontend-skill for Codex: art-direction rules for landing pages and app UI. Removed from openai/skills in April 2026; still installable from history.",
+  "tags": [
+   "frontend",
+   "design",
+   "codex",
+   "openai",
+   "landing-page"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Still works well even though OpenAI removed it from openai/skills: it wrote a visual, content and interaction thesis, then a three-file landing page in about four minutes. Check its stock photo choices; one showed the wrong subject.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Branded landing pages with a strong hero section",
+   "Reviewing a page against short litmus checks before shipping"
+  ],
+  "not_for": [
+   "Installing by name with $skill-installer: it is no longer in the main branch",
+   "Anyone who wants a maintained skill with updates"
+  ],
+  "safety": "Instruction-only OpenAI skill with no scripts, network calls or credentials; it is no longer maintained in openai/skills.",
+  "safety_flags": [
+   "instructions only",
+   "offline"
+  ],
+  "source_repo": "https://github.com/openai/skills"
+ },
+ {
+  "slug": "superdesign",
+  "name": "Superdesign",
+  "author": "@superdesigndev",
+  "summary": "Superdesign agent skill: lets a coding agent create UI, slide and graphic drafts on the superdesign.dev canvas through the @superdesign/cli command line tool.",
+  "tags": [
+   "ui",
+   "design",
+   "mockup",
+   "design-system",
+   "canvas",
+   "frontend"
+  ],
+  "reviewed": "2026-10-07",
+  "verdict": "Static review only: we read the files at f9f05cd but have not run this skill ourselves yet. Instructions only, but they drive a separate cloud CLI that logs in to superdesign.dev, uploads selected code and assets, and spends generation credits.",
+  "tested": "",
+  "test_result": "",
+  "good_for": [
+   "Redesigning a page of an existing app so it matches the codebase's design system",
+   "Exploring several visual variants of a feature before implementing it"
+  ],
+  "not_for": [
+   "Needs the separate Superdesign CLI (@superdesign/cli, installed on demand through npx) and a superdesign.dev login; the CLI is not part of the repo",
+   "Generation happens on the Superdesign service and spends your generation credits (SUPERDESIGN.md variant count rule); we did not check plans or prices"
+  ],
+  "safety": "Instructions only, but they drive a separate cloud CLI that logs in to superdesign.dev, uploads selected code and assets, and spends generation credits.",
+  "safety_flags": [
+   "needs API key",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/superdesigndev/superdesign-skill"
+ },
+ {
+  "slug": "mobile-design",
+  "name": "Mobile UI/UX",
+  "author": "@vudovn",
+  "summary": "Mobile-first design rules for iOS and Android apps (React Native, Flutter, native) from vudovn's AG Kit: touch targets, platform conventions, performance, plus a read-only audit script.",
+  "tags": [
+   "mobile",
+   "ios",
+   "android",
+   "react-native",
+   "flutter",
+   "ux",
+   "touch"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Useful for React Native and Flutter work: its audit script listed 12 warnings on a deliberately bad screen, the agent added the problems the script missed, and a second message produced a FlatList version that passes the audit. It reads a lot of reference files first, which costs context.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Planning app screens and navigation with platform conventions",
+   "Auditing list screens and touch targets in an existing mobile project"
+  ],
+  "not_for": [
+   "Web apps: the skill says so itself",
+   "Native SwiftUI or Compose projects that need full guides, not notes"
+  ],
+  "safety": "Mostly Markdown guidance plus a read-only standard-library Python audit script with no network, subprocess or file writes.",
+  "safety_flags": [
+   "runs scripts"
+  ],
+  "source_repo": "https://github.com/vudovn/antigravity-kit"
+ },
+ {
+  "slug": "shadcn-ui",
+  "name": "shadcn/ui",
+  "author": "@shadcn-ui",
+  "summary": "Official shadcn/ui skill: project-aware rules for adding, searching, composing and styling shadcn components via the shadcn CLI.",
+  "tags": [
+   "shadcn-ui",
+   "react",
+   "tailwind",
+   "components",
+   "design-system"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Worked, with changes when we ran it in Antigravity 2.0 (2026-10-18). Installed with Option 1 in about 2 minutes and the agent followed the skill's rules. In an empty folder the example prompt only produced a dashboard component file; after one follow-up asking it to create a Vite + React app with shadcn init, it built and ran a working dashboard (sidebar, 4 stat cards, data table) in about 10 more minutes.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-18.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Add a login or settings form",
+   "Dashboard with sidebar, stats cards and data table"
+  ],
+  "not_for": [
+   "Needs Node.js and a project with components.json; every command goes through npx, pnpm dlx or bunx and downloads the latest shadcn package",
+   "SKILL.md injects project context with the !`npx shadcn@latest info --json` syntax; if your agent does not run that, ask it to run the command itself"
+  ],
+  "safety": "Official shadcn skill: one read-only script, no API keys; the agent runs shadcn CLI commands that download packages and write component files into your project.",
+  "safety_flags": [
+   "installs packages",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/shadcn-ui/ui"
+ },
+ {
+  "slug": "ui-styling",
+  "name": "UI Styling",
+  "author": "@nextlevelbuilder",
+  "summary": "Companion skill from the UI UX Pro Max repo for shadcn/ui components, Tailwind CSS styling, dark mode, theming and canvas visuals.",
+  "tags": [
+   "tailwind",
+   "shadcn-ui",
+   "dark-mode",
+   "responsive",
+   "ui"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Worked, with changes when we ran it in Antigravity 2.0 (2026-10-28). The skill installed and worked: one sentence gave a tailwind.config.ts with an 11-step brand palette and Inter, written by the skill's own Python script. The install needed watching: the agent wrongly said the skill has no scripts, and after copying it kept \"verifying\" for minutes until we pressed Stop.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Responsive pricing or dashboard sections with shadcn/ui cards",
+   "Dark mode and theme variables"
+  ],
+  "not_for": [
+   "Overlaps with the official shadcn skill (our page); its examples use space-y-* and dark: color classes that the official skill's rules advise against",
+   "Needs Node.js 18+ for npx shadcn and Python 3.10+ for the helpers (scripts/requirements.txt); requirements.txt still mentions the old npx shadcn-ui@latest name"
+  ],
+  "safety": "Two local Python helpers: one runs npx shadcn add (no shell), one writes a Tailwind config; no HTTP client or API keys.",
+  "safety_flags": [
+   "runs scripts",
+   "writes files",
+   "network access"
+  ],
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+ },
+ {
+  "slug": "design-system",
+  "name": "Design System",
+  "author": "@nextlevelbuilder",
+  "summary": "Design token skill from the UI UX Pro Max repo: three-layer tokens, component specs, Tailwind integration and token-based HTML slides.",
+  "tags": [
+   "design-tokens",
+   "design-system",
+   "css-variables",
+   "tailwind",
+   "slides"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Worked when we ran it in Antigravity 2.0 (2026-10-28). Installed with Option 1 in about 4 minutes, together with its two dependencies (brand, ui-styling), exactly as our install page says. One sentence produced tokens.json and a 59-line tokens.css with primitive, semantic, component and dark-mode tokens, built by the skill's own script and checked with its validator.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Create a three-layer token CSS file for a brand",
+   "Check source files for hardcoded colors and values"
+  ],
+  "not_for": [
+   "Needs Node.js for the .cjs scripts and Python 3 for the slide scripts; SKILL.md lists brand and ui-styling as skill dependencies",
+   "Slide scripts expect project files such as docs/brand-guidelines.md and assets/design-tokens.json, and generate-slide.py writes to assets/designs/slides four folders above the script, which is your project root only when installed at <project>/.agents/skills/"
+  ],
+  "safety": "Local token and slide scripts: they write the files you name, make no network requests and need no API keys; generated slides load Chart.js and fonts from CDNs when opened.",
+  "safety_flags": [
+   "runs scripts",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+ },
+ {
+  "slug": "theme-factory",
+  "name": "Theme Factory",
+  "author": "@anthropics",
+  "summary": "Anthropic skill with 10 preset color and font themes for slides, docs, reports and landing pages, plus custom theme generation.",
+  "tags": [
+   "themes",
+   "color-palette",
+   "fonts",
+   "slides",
+   "design"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Worked, with changes when we ran it in Antigravity 2.0 (2026-10-28). Install with Option 1 worked as written (about 4 minutes). The theme was applied correctly, but only after a second, more precise message: with the short prompt the agent spent about 8 minutes reading the PDF and searching other folders, so we stopped it.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Restyle a slide deck with a preset theme",
+   "Give a report or landing page one consistent palette"
+  ],
+  "not_for": [
+   "Fonts are system fonts (DejaVu, FreeSans, FreeSerif), so the look depends on them being installed where the artifact is shown",
+   "The agent needs to be able to display a PDF for the preview step"
+  ],
+  "safety": "Instruction and data files only: no scripts, network calls or API keys; it just tells the agent which colors and fonts to apply.",
+  "safety_flags": [
+   "instructions only",
+   "offline"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "brand-guidelines",
+  "name": "Brand Guidelines",
+  "author": "@anthropics",
+  "summary": "Anthropic's official skill that applies a fixed brand palette and Poppins/Lora typography to slides, docs and other artifacts.",
+  "tags": [
+   "branding",
+   "brand-colors",
+   "typography",
+   "design",
+   "anthropic"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Worked when we ran it in Antigravity 2.0 (2026-10-28). Installed with Option 1 in about 3 minutes, exactly as our install page says. One sentence restyled a small HTML page with the skill's colors and fonts in about a minute, with a table of every color it changed.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Keep generated slides and documents on one palette and type pairing",
+   "Use as a starting template for your own company brand skill"
+  ],
+  "not_for": [
+   "The palette and fonts are Anthropic's own brand; edit SKILL.md to use yours.",
+   "Poppins and Lora must be installed on your machine, otherwise it falls back to Arial and Georgia."
+  ],
+  "safety": "Instruction-only Markdown skill with no scripts, network access or credentials.",
+  "safety_flags": [
+   "instructions only",
+   "offline"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "banner-design",
+  "name": "Banner Design",
+  "author": "@nextlevelbuilder",
+  "summary": "Skill from the UI UX Pro Max repo for designing social, ad, hero and print banners in HTML/CSS with several art directions.",
+  "tags": [
+   "banner",
+   "social-media",
+   "ads",
+   "graphic-design",
+   "html-css"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Worked, with changes when we ran it in Antigravity 2.0 (2026-10-29). The banners are good: two art directions in two sizes, built in HTML/CSS and exported as PNGs at exactly 1200×628 and 1080×1080. But it took about 12 minutes, most of it spent getting headless Chrome to render Google Fonts, and the agent added course details and studio names we never gave it.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-29.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Twitter/X header or LinkedIn cover in several styles",
+   "Google Display ad sizes from one brief"
+  ],
+  "not_for": [
+   "PNG export needs a browser or screenshot capability in your agent; otherwise you get HTML/CSS only (SKILL.md says PNG is then marked pending).",
+   "Image generation is optional and uses tools your agent already has; the skill bundles none."
+  ],
+  "safety": "Instruction-only skill with no scripts or credentials; it writes banner files into your project.",
+  "safety_flags": [
+   "writes files",
+   "instructions only"
+  ],
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+ },
+ {
+  "slug": "canvas-design",
+  "name": "Canvas Design",
+  "author": "@anthropics",
+  "summary": "Anthropic's official canvas-design skill: turns a poster or art request into a written design philosophy, then a one-page PNG or PDF, with 29 bundled font families.",
+  "tags": [
+   "design",
+   "poster",
+   "art",
+   "png",
+   "pdf",
+   "typography",
+   "anthropic"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Makes print-quality posters, not UI code: one sentence gave a 2400 × 3400 px poster PNG and a written design philosophy in about five minutes. Expect more small text than its minimalist brief suggests.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Posters, covers and event flyers with a clear visual identity",
+   "A one-page visual to go with a landing-page idea"
+  ],
+  "not_for": [
+   "HTML or CSS output: use a frontend design skill instead",
+   "Small project folders: the skill brings 5.5 MB of fonts, so install it globally"
+  ],
+  "safety": "Instruction-only Anthropic skill with bundled fonts: no scripts, no network calls written into it (apart from a generic note to download fonts if needed) and no credentials.",
+  "safety_flags": [
+   "instructions only",
+   "writes files",
+   "network access"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "html-slides",
+  "name": "HTML Slides",
+  "author": "@nextlevelbuilder",
+  "summary": "Skill from the UI UX Pro Max repo for strategic HTML presentations with Chart.js, design tokens, layout patterns and copy formulas.",
+  "tags": [
+   "slides",
+   "presentations",
+   "html",
+   "chartjs",
+   "pitch-deck"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Gives a polished HTML deck from one sentence: our run made six slides with keyboard navigation and a Chart.js chart in about 13 minutes. On Windows its token validator crashed on file encoding and the agent patched it, so check that step.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Pitch, sales or all-hands decks you present in a browser",
+   "Data slides with real charts"
+  ],
+  "not_for": [
+   "Anyone who needs PowerPoint or Google Slides files",
+   "Offline presenting: charts load Chart.js from a CDN"
+  ],
+  "safety": "Instruction-only skill with no scripts or credentials; generated decks load Chart.js from a public CDN.",
+  "safety_flags": [
+   "network access",
+   "instructions only"
+  ],
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+ },
+ {
+  "slug": "figma-implement-design",
+  "name": "Figma Implement Design",
+  "author": "@openai",
+  "summary": "Figma's implement-design skill for Codex: turns Figma frames into production code with 1:1 visual fidelity through the Figma MCP server.",
+  "tags": [
+   "figma",
+   "design-to-code",
+   "frontend",
+   "mcp",
+   "codex"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Static review only: we read the files at 49f948f but have not run this skill ourselves yet. Instruction-only Figma workflow with no scripts; it reads designs through your Figma MCP connection and is governed by Figma's Developer Terms.",
+  "tested": "",
+  "test_result": "",
+  "good_for": [
+   "Implement a Figma component in an existing design system",
+   "Build a full page or dashboard from a Figma frame"
+  ],
+  "not_for": [
+   "Requires the Figma MCP server (agents/openai.yaml lists https://mcp.figma.com/mcp) and access to the Figma file",
+   "Governed by the Figma Developer Terms; offered as Beta and may change or be discontinued (LICENSE.txt)"
+  ],
+  "safety": "Instruction-only Figma workflow with no scripts; it reads designs through your Figma MCP connection and is governed by Figma's Developer Terms.",
+  "safety_flags": [
+   "acts in your accounts",
+   "network access"
+  ],
+  "source_repo": "https://github.com/openai/skills"
+ },
+ {
+  "slug": "figma-mcp",
+  "name": "Figma MCP",
+  "author": "@figma",
+  "summary": "Figma's official MCP server: gives AI coding agents design context from Figma frames, variables and Code Connect; remote server can also write to the canvas.",
+  "tags": [
+   "figma",
+   "mcp",
+   "design-to-code",
+   "code-connect",
+   "ui",
+   "design-system"
+  ],
+  "reviewed": "2026-10-07",
+  "verdict": "Figma's official server does the round trip: in our run it drew a pricing card in Figma and read it back as React and Tailwind with the right sizes and colours. Map its font classes to real fonts before you paste the code, and note that Antigravity gets the local, read-only server only.",
+  "tested": "Claude Code (Figma remote MCP server), remote server https://mcp.figma.com/mcp via a connected Claude Code session, Figma Starter team, View seat, 2026-11-12.",
+  "test_result": "Works",
+  "good_for": [
+   "Turning a selected Figma frame into code in your own framework",
+   "Pulling design tokens and real components instead of letting the model guess"
+  ],
+  "not_for": [
+   "Antigravity users who need write-back to Figma: the catalog lists read-only access",
+   "View or Collab seats with heavy use: the documented limit is 20 tool calls a month"
+  ],
+  "safety": "Official hosted server with Figma OAuth; the guide repo has no server code but bundles skills with scripts, and the remote tools can write to your Figma files.",
+  "safety_flags": [
+   "acts in your accounts",
+   "needs API key",
+   "network access"
+  ],
+  "source_repo": "https://github.com/figma/mcp-server-guide"
+ },
+ {
+  "slug": "web-design-guidelines",
+  "name": "Web Design Guidelines",
+  "author": "@vercel-labs",
+  "summary": "Vercel's review skill: fetches Vercel's Web Interface Guidelines at run time, checks the files you name and lists violations as file:line findings.",
+  "tags": [
+   "ui-review",
+   "accessibility",
+   "ux",
+   "vercel",
+   "frontend"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "A fast pre-ship review, not a redesign: on a 1,710-line page it returned a long file:line list in about three minutes and the lines we spot-checked were right. It fetches its rule list from GitHub on every run, so results can change without you updating anything.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (High), Windows, 2026-10-14.",
+  "test_result": "Works",
+  "good_for": [
+   "Checking a component folder for missing labels, focus styles and form details before release",
+   "A quick design-hygiene pass on the files in a pull request"
+  ],
+  "not_for": [
+   "Offline use: the rules are not in the skill folder",
+   "Teams that need reproducible reviews pinned to one rule version"
+  ],
+  "safety": "No scripts or credentials, but the skill fetches its rule set from a remote GitHub raw URL on every run, so the instructions it follows can change.",
+  "safety_flags": [
+   "network access",
+   "instructions only"
+  ],
+  "source_repo": "https://github.com/vercel-labs/agent-skills"
+ },
+ {
+  "slug": "web-accessibility",
+  "name": "Web Accessibility (a11y)",
+  "author": "@addyosmani",
+  "summary": "Addy Osmani's WCAG 2.2 accessibility skill: audit workflow, code patterns, testing checklist and issues ranked by impact.",
+  "tags": [
+   "accessibility",
+   "a11y",
+   "wcag",
+   "lighthouse",
+   "ux"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Worked when we ran it in Antigravity 2.0 (2026-10-29). On a small page with 11 deliberate problems it found all of them, each with the element, the WCAG 2.2 success criterion and level, and a concrete fix, then rewrote index.html in about 2 minutes. We re-checked the contrast numbers: 2.32:1 and 9.74:1 are right; one ratio (1.27:1 for #bbb on #ccc) is slightly off (we get 1.20:1), which doesn't change the verdict.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-29.",
+  "test_result": "Works",
+  "good_for": [
+   "Audit a landing page before launch and fix failing items",
+   "Add accessible names, focus styles and skip links"
+  ],
+  "not_for": [
+   "Live audits need Node.js (npx lighthouse) or axe installed.",
+   "SKILL.md itself says automated tools catch only a subset of barriers and a score of 100 is not WCAG conformance."
+  ],
+  "safety": "Instruction-only skill; it suggests running Lighthouse or axe via npm but bundles no scripts and needs no credentials.",
+  "safety_flags": [
+   "installs packages",
+   "network access",
+   "instructions only"
+  ],
+  "source_repo": "https://github.com/addyosmani/web-quality-skills"
+ },
+ {
+  "slug": "web-artifacts-builder",
+  "name": "Web Artifacts Builder",
+  "author": "@anthropics",
+  "summary": "Anthropic skill that scaffolds a React, TypeScript, Tailwind and shadcn/ui project and bundles it into one self-contained HTML file.",
+  "tags": [
+   "react",
+   "tailwind",
+   "shadcn-ui",
+   "frontend",
+   "html"
+  ],
+  "reviewed": "2026-10-21",
+  "verdict": "Worked when we ran it in Antigravity 2.0 (2026-11-07). Installed with Option 1 in about 2 minutes and worked. One sentence gave a single-file kanban board (kanban-board.html, 423 KB) in about 12 minutes, most of it spent installing npm packages.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-11-07.",
+  "test_result": "Works",
+  "good_for": [
+   "Interactive dashboard or kanban board as one HTML file",
+   "Prototype with shadcn/ui components and state"
+  ],
+  "not_for": [
+   "Needs Node.js 18+, bash and network access to npm; the scripts target macOS and Linux shells.",
+   "init-artifact.sh runs npm install -g pnpm if pnpm is missing."
+  ],
+  "safety": "Runs local bash scripts that install npm packages (and pnpm globally) and write project files; no API keys or non-npm network calls.",
+  "safety_flags": [
+   "installs packages",
+   "runs scripts",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "algorithmic-art",
+  "name": "Algorithmic Art",
+  "author": "@anthropics",
+  "summary": "Anthropic's official algorithmic-art skill: a written algorithmic philosophy, then a self-contained p5.js viewer with seeded randomness, parameter sliders and seed navigation.",
+  "tags": [
+   "generative-art",
+   "p5js",
+   "creative-coding",
+   "design",
+   "anthropic"
+  ],
+  "reviewed": "2026-10-14",
+  "verdict": "Worked when we ran it in Antigravity 2.0 (2026-10-28). Installed with Option 1 in about 4 minutes, as our install page says. One sentence gave a working p5.js viewer (index.html) with a seeded ink-in-water simulation, 7 sliders, seed navigation and a Download PNG button, plus a written philosophy, in about 4 minutes.",
+  "tested": "Antigravity 2.0, desktop app, Gemini 3.8 Flash (Medium), Windows, 2026-10-28.",
+  "test_result": "Works",
+  "good_for": [
+   "Generative backgrounds or hero art for a landing page concept",
+   "Flow-field, particle or recursive-pattern pieces you can tune and re-seed"
+  ],
+  "not_for": [
+   "Needs a browser to view the result and internet access when you open it: viewer.html loads p5.js 1.7.0 from cdnjs.cloudflare.com and Poppins and Lora from Google Fonts (the only URLs in the template, we counted)",
+   "SKILL.md tells the agent to keep Anthropic branding (Anthropic colours, Poppins/Lora fonts, layout) in the viewer's interface, so your page looks like an Anthropic artifact unless you ask for something else"
+  ],
+  "safety": "Instruction-and-template skill with no scripts; the generated HTML page loads p5.js from cdnjs and fonts from Google when opened, and makes no other network calls.",
+  "safety_flags": [
+   "writes files",
+   "network access"
+  ],
+  "source_repo": "https://github.com/anthropics/skills"
+ },
+ {
+  "slug": "image-generation",
+  "name": "Image Generation (imagegen)",
+  "author": "@openai",
+  "summary": "OpenAI's imagegen skill: generate or edit raster images (photos, mockups, sprites, cutouts) with GPT Image models via a bundled Python CLI.",
+  "tags": [
+   "image-generation",
+   "openai",
+   "gpt-image",
+   "image-editing",
+   "assets"
+  ],
+  "reviewed": "2026-10-13",
+  "verdict": "OpenAI's imagegen is a clean, low-risk way to make real bitmap assets from a coding agent, but outside Codex it only works through its CLI fallback, which needs your OpenAI key and bills your account. We reviewed it statically; we have not run it.",
+  "tested": "",
+  "test_result": "",
+  "good_for": [
+   "Hero images, product mockups and game sprites as project files",
+   "Editing a product photo while keeping the product unchanged"
+  ],
+  "not_for": [
+   "Anyone without an OpenAI API key or budget for image calls",
+   "Non-OpenAI image models: the script accepts only gpt-image models"
+  ],
+  "safety": "Low risk: a single CLI that only calls the OpenAI Image API with your own key and writes images locally without overwriting by default.",
+  "safety_flags": [
+   "needs API key",
+   "network access",
+   "writes files"
+  ],
+  "source_repo": "https://github.com/openai/skills"
+ },
+ {
+  "slug": "photo-retouching",
+  "name": "Photo Retouching (fal.ai)",
+  "author": "@fal-ai-community",
+  "summary": "fal.ai's official fal-recipes skill: restore and clean up photos (deblur, denoise, dehaze, fix faces, restore scans) through the genmedia CLI.",
+  "tags": [
+   "photo-retouching",
+   "image-restoration",
+   "fal-ai",
+   "face-restoration",
+   "image-editing"
+  ],
+  "reviewed": "2026-10-13",
+  "verdict": "Static review only: we read the files at 9ca8504 but have not run this skill ourselves yet. Low to moderate risk: Markdown instructions that upload your photos to fal.ai for paid processing, with a pipe-to-shell CLI installer documented.",
+  "tested": "",
+  "test_result": "",
+  "good_for": [
+   "Deblur a slightly shaky photo",
+   "Remove sensor noise from a high-ISO shot"
+  ],
+  "not_for": [
+   "Needs a fal.ai API key and the genmedia CLI; calls are billed per use (genmedia pricing <endpoint> shows the cost)",
+   "Your photos are uploaded to the fal.ai CDN with genmedia upload, so do not use it for images you cannot send to a third party"
+  ],
+  "safety": "Low to moderate risk: Markdown instructions that upload your photos to fal.ai for paid processing, with a pipe-to-shell CLI installer documented.",
+  "safety_flags": [
+   "network access",
+   "needs API key",
+   "installs packages"
+  ],
+  "source_repo": "https://github.com/fal-ai-community/skills"
+ },
+ {
+  "slug": "data-visualization",
+  "name": "Data Visualization",
+  "author": "@anthropics",
+  "summary": "Anthropic's data-visualization skill: pick the right chart and write clean, accessible Python charts with matplotlib, seaborn and plotly.",
+  "tags": [
+   "data-visualization",
+   "charts",
+   "matplotlib",
+   "seaborn",
+   "plotly",
+   "python"
+  ],
+  "reviewed": "2026-10-13",
+  "verdict": "Worked, with changes when we ran it in Antigravity 2.0 (2026-10-13). Installed and worked, but the agent skipped the Python library step, so the matplotlib code was never run.",
+  "tested": "Antigravity 2.0, desktop app 2.21.1, Gemini 3.8 Flash (High), macOS, 2026-10-13.",
+  "test_result": "Works (steps corrected)",
+  "good_for": [
+   "Plot a metric trend by category over time",
+   "Rank categories with a sorted horizontal bar chart"
+  ],
+  "not_for": [
+   "Python only: needs matplotlib, seaborn, pandas and numpy (plotly for interactive charts); it installs nothing for you",
+   "Guidance plus code patterns, not a charting service; the agent must be able to run Python to render images"
+  ],
+  "safety": "Very low risk: a Markdown-only guide with plotting code examples and no network access.",
+  "safety_flags": [
+   "instructions only",
+   "offline"
+  ],
+  "source_repo": "https://github.com/anthropics/knowledge-work-plugins"
+ }
+]

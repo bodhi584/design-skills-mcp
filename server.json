@@ -1,0 +1,9 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "org.antigravityskills/design-skills",
+  "title": "Design Skills Library",
+  "description": "Find hand-tested UI/UX design skills for coding agents: verdicts, safety flags, pipelines, installs.",
+  "version": "1.0.0",
+  "websiteUrl": "https://www.antigravityskills.org/design-skills-mcp",
+  "remotes": [{ "type": "streamable-http", "url": "https://mcp.antigravityskills.org/mcp" }]
+}
