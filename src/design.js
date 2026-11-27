@@ -331,7 +331,7 @@ export function lintDesign(args = {}) {
   const html = String(args.html || "");
   let css = String(args.css || "");
   if (!html.trim() && !css.trim()) return { error: "Pass `html` (a page or fragment) and optionally `css`. Inline <style> blocks are read too." };
-  if (html.length + css.length > 400000) return { error: "Input over 400 KB. Lint one page or section at a time." };
+  if (html.replace(/(<script\b[^>]*>)[\s\S]*?(<\/script>)/gi, "$1$2").length > 400000 || css.length > 1500000) return { error: "Input too large (over 400 KB of HTML without scripts, or 1.5 MB of CSS). Lint one page or section at a time." };
   const F = []; const add = (severity, rule, message, fix, at) => F.push({ severity, rule, message, fix, ...(at != null ? { line: at } : {}) });
   const { tags } = parseHTML(html);
   const src = html;
@@ -362,7 +362,8 @@ export function lintDesign(args = {}) {
   if (isDoc && h1s.length === 0) add("warn", "h1-missing", "No <h1> on the page.", "Give the page one <h1> that says what it is.");
   if (h1s.length > 1) add("warn", "h1-multiple", `${h1s.length} <h1> elements.`, "Keep one <h1>; demote the others to <h2>.", lineOf(src, h1s[1].i));
   let prev = 0; heads.forEach(t => { const lv = +t.name[1]; if (prev && lv > prev + 1) add("error", "heading-skip", `Heading jumps from h${prev} to h${lv}.`, `Use h${prev + 1}, or style a lower level to look smaller.`, lineOf(src, t.i)); prev = lv; });
-  heads.forEach(t => { if (!strip(textOf(src, t.i, t.name))) add("error", "heading-empty", `Empty <${t.name}>.`, "Give the heading text or remove it.", lineOf(src, t.i)); });
+  const hasScript = tags.some(x => x.name === "script" && !x.close);
+  heads.forEach(t => { if (!strip(textOf(src, t.i, t.name))) { if (t.attrs.id && hasScript) add("tip", "heading-empty", `Empty <${t.name} id="${t.attrs.id}">; fine if a script fills it before it is shown.`, "If no script fills it, give the heading text or remove it.", lineOf(src, t.i)); else add("error", "heading-empty", `Empty <${t.name}>.`, "Give the heading text or remove it.", lineOf(src, t.i)); } });
 
   // images
   tags.filter(t => t.name === "img" && !t.close).forEach(t => {
@@ -401,11 +402,12 @@ export function lintDesign(args = {}) {
   // --- CSS checks
   let outlineNone = false; const focusVisible = rules.some(r => /:focus(-visible|-within)?\b/.test(r.sel) && ((r.decl.outline && !/^(none|0)\b/.test(r.decl.outline)) || r.decl["box-shadow"] || r.decl["outline-color"] || r.decl.border || r.decl["border-color"]));
   const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0, tiny = 0;
+  const pageBg = (() => { for (const r of rules) { if (!/^(html|body|:root)\b/.test(r.sel)) continue; const c = firstColor(resolveVars(r.decl["background-color"] || r.decl.background || r.decl["--bg"] || r.decl["--background"] || "", vars)); if (c && (c.a == null || c.a === 1)) return c; } return { r: 255, g: 255, b: 255, a: 1 }; })();
   rules.forEach(r => {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
     const ff = d["font-family"] || (d.font && d.font.match(/(?:\d+px|\d+(?:\.\d+)?rem|\d+(?:\.\d+)?em)(?:\/[\d.]+)?\s+(.+)$/)?.[1]);
-    if (ff) { const first = resolveVars(ff, vars).split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^(inherit|initial|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first) && !/ fallback$/.test(first)) fams.add(first); }
+    if (ff) { const first = resolveVars(ff, vars).replace(/&quot;?|&#39;?/g, "").split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^var\(/.test(first) && !/^(inherit|initial|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first) && !/ fallback$/.test(first)) fams.add(first); }
     for (const k in d) { const v = resolveVars(d[k], vars); (v.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g) || []).forEach(c => { const p = parseColor(c); if (p) colors.add(toHex(p)); }); }
     for (const k of ["background", "background-color"]) { const c = firstColor(resolveVars(d[k], vars)); if (c && (r.sel.match(/\b(body|html|main|:root)\b/) || /^\.?[\w-]+$/.test(r.sel))) bgColors.add(toHex(c)); }
     for (const k in d) if (/^--(color-)?(bg|background|paper|page)$/.test(k)) { const c = firstColor(resolveVars(d[k], vars)); if (c) bgColors.add(toHex(c)); }
@@ -416,7 +418,7 @@ export function lintDesign(args = {}) {
     if (/\ball\b/.test(d.transition || "") || /\ball\b/.test(d["transition-property"] || "")) transAll++;
     if (/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.(0[5-9]|1|15)\)/.test(d["box-shadow"] || "")) softShadow++;
     // contrast of color/background declared in same rule
-    const fg = firstColor(resolveVars(d.color, vars)), bg = firstColor(resolveVars(d["background-color"] || d.background, vars));
+    const fg = firstColor(resolveVars(d.color, vars)); let bg = firstColor(resolveVars(d["background-color"] || d.background, vars)); if (bg && bg.a != null && bg.a < 1) bg = blend(bg, pageBg);
     if (fg && bg) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text).`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
   });
   // token pair contrast: --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)

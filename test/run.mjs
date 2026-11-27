@@ -18,4 +18,13 @@ const missed=seeded.filter(s=>!got.has(s)); console.log('bad fixture: caught',se
 ok((seeded.length-missed.length)/seeded.length>=0.9,'G2 recall');
 // good page
 const G=lintDesign({html:fs.readFileSync(new URL('./good.html',import.meta.url),'utf8')}); console.log('good page',G.score,G.counts,G.findings.map(f=>f.severity+':'+f.rule+': '+f.message.slice(0,90)));
+// regressions found by dogfooding (2026-11-27)
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><meta name="viewport" content="width=device-width"><style>body{background:#fff}.b{color:#0071e3;background:rgba(0,113,227,.07)}</style></head><body><main><h1>x</h1><a class="b" href="/">Go</a></main></body></html>'});
+  const c=R.findings.find(f=>f.rule==='contrast'); ok(!c || c.severity!=='error', 'translucent bg blended over page bg: '+(c&&c.message)); }
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><meta name="viewport" content="width=device-width"></head><body><main><h1>x</h1><h2 id="t"></h2><script>document.getElementById("t").textContent="y"</script></main></body></html>'});
+  const h=R.findings.find(f=>f.rule==='heading-empty'); ok(h && h.severity==='tip', 'script-filled heading is a tip'); }
+{ const R=lintDesign({html:'<p style="font-family:&quot;Lora&quot;,serif">a</p><style>.x{font-family:var(--nope),sans-serif}</style>'});
+  ok(!(R.stats.font_families||[]).some(f=>/^var\(|&quot/.test(f)), 'font list has no var()/&quot: '+R.stats.font_families); }
+{ const big='<!doctype html><html lang="en"><head><title>t</title></head><body><main><h1>x</h1></main><script>'+'a'.repeat(450000)+'</script></body></html>';
+  ok(!lintDesign({html:big}).error, 'script bodies do not count toward size limit'); }
 console.log(`pass ${pass} fail ${fail}`);
