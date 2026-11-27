@@ -24,13 +24,14 @@
    "Machines without Python 3: the search script needs it",
    "Anyone who wants zero network calls: the plugin also installs companion skills that can call image APIs with your keys"
   ],
-  "safety": "The core UI/UX Pro Max search scripts are offline, standard-library Python that only read bundled data and write files on explicit --persist, but the plugin and CLI also install companion design skills whose optional scripts call external AI image APIs with your keys or run npx.",
+  "safety": "The core UI/UX Pro Max search scripts are offline, standard-library Python that only read bundled data and write files on explicit --persist or --preview (the preview goes to a temp file unless you give --output-dir), but the plugin and CLI also install companion design skills whose optional scripts call external AI image APIs with your keys or run npx.",
   "safety_flags": [
    "installs packages",
    "network access",
    "writes files"
   ],
-  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+  "source_repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "rechecked": "2026-11-27 against v2.15.0 (11ca2b3): verdict and flags still hold"
  },
  {
   "slug": "frontend-design",
@@ -62,13 +63,14 @@
    "instructions only",
    "offline"
   ],
-  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/frontend-design"
+  "source_repo": "https://github.com/anthropics/skills/tree/main/skills/frontend-design",
+  "rechecked": "2026-11-27: no upstream changes since review commit 683bc88"
  },
  {
   "slug": "impeccable",
   "name": "Impeccable",
   "author": "@pbakaus",
-  "summary": "Paul Bakaus's Impeccable design skill: one /impeccable skill with 24 design commands, live browser iteration and a 59-rule detector for AI-generated frontend patterns.",
+  "summary": "Paul Bakaus's Impeccable design skill: one /impeccable skill with 24 design commands, live browser iteration and a 62-rule detector for AI-generated frontend patterns.",
   "tags": [
    "frontend",
    "design",
@@ -89,13 +91,14 @@
    "Locked-down machines: the first run downloads a binary from GitHub",
    "Deployed HTTPS sites: live mode is for local checkouts only"
   ],
-  "safety": "Well-documented design skill that runs a downloaded, checksum-verified engine binary, writes .impeccable/ files and contacts impeccable.style; set IMPECCABLE_NO_TELEMETRY=1 to skip the anonymous choice report.",
+  "safety": "Well-documented design skill that runs a downloaded, checksum-verified engine binary, writes .impeccable/ files and contacts impeccable.style; set IMPECCABLE_NO_TELEMETRY=1 to skip the anonymous choice report. In live mode, Apply can fall back to running your codex or claude CLI with approvals and sandbox off; set IMPECCABLE_LIVE_COPY_AGENT=chat or off to prevent it. Optional sign-in uploads critique reports and scan counts.",
   "safety_flags": [
    "runs scripts",
    "network access",
    "writes files"
   ],
-  "source_repo": "https://github.com/pbakaus/impeccable"
+  "source_repo": "https://github.com/pbakaus/impeccable",
+  "rechecked": "2026-11-27 against skill v4.11.1 (2fc5e14): verdict and flags still hold; safety note extended"
  },
  {
   "slug": "taste-skill",
@@ -119,16 +122,17 @@
    "Reviewing an existing page against a written list of generated-page tells"
   ],
   "not_for": [
-   "Dashboards and app screens: its README points to other skills for product UI",
-   "Offline machines: the picture script needs network access"
+   "Dashboards and app screens: it builds company and marketing sites; product UI appears only as mock-ups inside them (the older product-UI skills moved to taste-skill-classics)",
+   "Offline machines: a bundled photo set works offline, but extra photos, icons and Google Fonts need network access"
   ],
-  "safety": "Instructions plus local Node scripts that launch a headless browser, fetch pictures from public collections and write to the project and ~/.taste-skill; no API keys needed.",
+  "safety": "Instructions plus local Node scripts that serve the page on 127.0.0.1, launch a headless browser, fetch pictures from Wikimedia Commons and Picsum and icons from jsDelivr, and write to the project's .taste-skill folder and the system temp folder; in Claude Code a built-in Stop hook runs its check script automatically. No package installs or API keys.",
   "safety_flags": [
    "runs scripts",
    "network access",
    "writes files"
   ],
-  "source_repo": "https://github.com/Leonxlnx/taste-skill"
+  "source_repo": "https://github.com/Leonxlnx/taste-skill",
+  "rechecked": "2026-11-27 against v2.5.1 (952435f): verdict and flags still hold; safety wording updated"
  },
  {
   "slug": "claude-design-skill",
