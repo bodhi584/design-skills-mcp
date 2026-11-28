@@ -409,7 +409,7 @@ export function lintDesign(args = {}) {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
     const ff = d["font-family"] || (d.font && d.font.match(/(?:\d+px|\d+(?:\.\d+)?rem|\d+(?:\.\d+)?em)(?:\/[\d.]+)?\s+(.+)$/)?.[1]);
-    if (ff) { const first = resolveVars(ff, vars).replace(/&quot;?|&#39;?/g, "").split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && !/^var\(/.test(first) && !/^(inherit|initial|system-ui|sans-serif|serif|monospace|ui-monospace|-apple-system)$/.test(first) && !/ fallback$/.test(first)) fams.add(first); }
+    if (ff) { const first = resolveVars(ff, vars).replace(/&quot;?|&#39;?/g, "").split(",")[0].replace(/["']/g, "").trim().toLowerCase(); if (first && /^[a-z0-9][a-z0-9 _-]*$/.test(first) && !/^(inherit|initial|system-ui|sans-serif|serif|monospace|ui-monospace|ui-serif|ui-sans-serif|ui-rounded|cursive|-apple-system)$/.test(first) && !/ fallback$/.test(first)) fams.add(first); }
     for (const k in d) { const v = resolveVars(d[k], vars); (v.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)/g) || []).forEach(c => { const p = parseColor(c); if (p) colors.add(toHex(p)); }); }
     for (const k of ["background", "background-color"]) { const c = firstColor(resolveVars(d[k], vars)); if (c && (r.sel.match(/\b(body|html|main|:root)\b/) || /^\.?[\w-]+$/.test(r.sel))) bgColors.add(toHex(c)); }
     for (const k in d) if (/^--(color-)?(bg|background|paper|page)$/.test(k)) { const c = firstColor(resolveVars(d[k], vars)); if (c) bgColors.add(toHex(c)); }
@@ -424,8 +424,9 @@ export function lintDesign(args = {}) {
     // a translucent white (or black) wash under white (or black) text only makes sense on a dark (or light) parent we cannot see: skip it
     const ext = c => c && (c.r >= 240 && c.g >= 240 && c.b >= 240 ? 1 : c.r <= 15 && c.g <= 15 && c.b <= 15 ? -1 : 0);
     const overlayOnUnknown = bg && bg.a != null && bg.a < 1 && ext(bg) !== 0 && ext(bg) === ext(fg);
-    if (bg && bg.a != null && bg.a < 1) bg = blend(bg, pageBg);
-    if (fg && bg && !overlayOnUnknown) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text).`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
+    const translucent = !!(bg && bg.a != null && bg.a < 1);
+    if (translucent) bg = blend(bg, pageBg);
+    if (fg && bg && !overlayOnUnknown) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 && !translucent ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text)${translucent ? "; the background is translucent, so this assumes it sits on the page background: check the real parent in a browser" : ""}.`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
   });
   // token pair contrast (--ink/--muted only warn: on dark themes --ink is often the page colour, not text): --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)
   rules.forEach(r => {

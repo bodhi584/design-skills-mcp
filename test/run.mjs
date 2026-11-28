@@ -35,6 +35,10 @@ const G=lintDesign({html:fs.readFileSync(new URL('./good.html',import.meta.url),
 { const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><style>body{background:#fbf9f4}.nav a:hover{background:rgba(255,255,255,.14);color:#fff}.chip{background:rgba(255,106,43,.1);color:#ff6a2b}</style></head><body><main><h1>x</h1><a id="rules"></a><a href="/x"></a></main></body></html>'});
   const c=R.findings.filter(f=>f.rule==='contrast'); ok(!c.some(f=>/nav a:hover/.test(f.message)), 'white wash under white text skipped'); ok(c.some(f=>/chip/.test(f.message)), 'brand tint still checked over page bg');
   const ln=R.findings.filter(f=>f.rule==='link-name'); ok(ln.length===1, 'anchor target without href is not a link: '+ln.length); }
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><style>body{background:#f4efe6}.chip{background:rgb(255 106 43/.18);color:#ff6a2b}.x{font-family:var(--a,"Lora"),serif}.y{font-family:ui-serif,Georgia}.z{color:#bbb;background:#fff}</style></head><body><main><h1>x</h1></main></body></html>'});
+  const ch=R.findings.find(f=>f.rule==='contrast'&&/chip/.test(f.message)); ok(ch&&ch.severity==='warn'&&/translucent/.test(ch.message), 'translucent bg contrast is a warn with a browser note');
+  ok(R.findings.some(f=>f.rule==='contrast'&&/"\.z"/.test(f.message)&&f.severity==='error'), 'opaque low contrast still error');
+  ok(!(R.stats.font_families||[]).some(f=>/[()]|^ui-/.test(f)), 'font list has no ) or ui-*: '+R.stats.font_families); }
 // worker.js carries its own copy of lintDesign (it is deployed as a single file): both copies must match
 { const seg=s=>{const a=s.indexOf('function lintDesign'); return s.slice(a, s.indexOf('\n}\n',a)+3);};
   ok(seg(fs.readFileSync(new URL('../src/design.js',import.meta.url),'utf8'))===seg(fs.readFileSync(new URL('../src/worker.js',import.meta.url),'utf8')), 'lintDesign in worker.js matches design.js'); }
