@@ -3,7 +3,7 @@
 const SITE = "https://www.antigravityskills.org";
 const FILES = "https://files.antigravityskills.org/install";
 const DATA_UPDATED = "2026-11-26";
-const SERVER = { name: "design-skills", title: "Design Skills MCP (antigravityskills.org)", version: "2.0.3" };
+const SERVER = { name: "design-skills", title: "Design Skills MCP (antigravityskills.org)", version: "2.0.4" };
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const DATA_URL = "https://raw.githubusercontent.com/bodhi584/design-skills-mcp/main/data/design-skills.json";
@@ -422,7 +422,10 @@ function lintDesign(args = {}) {
   let outlineNone = false; const focusVisible = rules.some(r => /:focus(-visible|-within)?\b/.test(r.sel) && ((r.decl.outline && !/^(none|0)\b/.test(r.decl.outline)) || r.decl["box-shadow"] || r.decl["outline-color"] || r.decl.border || r.decl["border-color"]));
   const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0, tiny = 0;
   const pageBg = (() => { for (const r of rules) { if (!/^(html|body|:root)\b/.test(r.sel)) continue; const c = firstColor(resolveVars(r.decl["background-color"] || r.decl.background || r.decl["--bg"] || r.decl["--background"] || "", vars)); if (c && (c.a == null || c.a === 1)) return c; } return { r: 255, g: 255, b: 255, a: 1 }; })();
-  rules.forEach(r => {
+  // cascade-lite: a rule whose colours are overridden by a later identical selector, or by a more specific one ending in it (body .btn over .btn), is not what visitors see
+  const paints = o => "color" in o.decl || "background" in o.decl || "background-color" in o.decl;
+  const effective = (r, ri) => { const d = { ...r.decl }; rules.forEach((o, oi) => { if (o !== r && paints(o) && ((o.sel === r.sel && oi > ri) || o.sel.endsWith(" " + r.sel))) { if ("color" in o.decl) d.color = o.decl.color; if ("background" in o.decl || "background-color" in o.decl) { delete d.background; d["background-color"] = o.decl["background-color"] || o.decl.background; } } }); return d; };
+  rules.forEach((r, ri) => {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
     const ff = d["font-family"] || (d.font && d.font.match(/(?:\d+px|\d+(?:\.\d+)?rem|\d+(?:\.\d+)?em)(?:\/[\d.]+)?\s+(.+)$/)?.[1]);
@@ -437,7 +440,8 @@ function lintDesign(args = {}) {
     if (/\ball\b/.test(d.transition || "") || /\ball\b/.test(d["transition-property"] || "")) transAll++;
     if (/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.(0[5-9]|1|15)\)/.test(d["box-shadow"] || "")) softShadow++;
     // contrast of color/background declared in same rule
-    const fg = firstColor(resolveVars(d.color, vars)); let bg = firstColor(resolveVars(d["background-color"] || d.background, vars));
+    const ed = paints(r) ? effective(r, ri) : d;
+    const fg = firstColor(resolveVars(ed.color, vars)); let bg = firstColor(resolveVars(ed["background-color"] || ed.background, vars));
     // a translucent white (or black) wash under white (or black) text only makes sense on a dark (or light) parent we cannot see: skip it
     const ext = c => c && (c.r >= 240 && c.g >= 240 && c.b >= 240 ? 1 : c.r <= 15 && c.g <= 15 && c.b <= 15 ? -1 : 0);
     const overlayOnUnknown = bg && bg.a != null && bg.a < 1 && ext(bg) !== 0 && ext(bg) === ext(fg);

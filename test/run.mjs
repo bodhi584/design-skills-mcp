@@ -39,6 +39,8 @@ const G=lintDesign({html:fs.readFileSync(new URL('./good.html',import.meta.url),
   const ch=R.findings.find(f=>f.rule==='contrast'&&/chip/.test(f.message)); ok(ch&&ch.severity==='warn'&&/translucent/.test(ch.message), 'translucent bg contrast is a warn with a browser note');
   ok(R.findings.some(f=>f.rule==='contrast'&&/"\.z"/.test(f.message)&&f.severity==='error'), 'opaque low contrast still error');
   ok(!(R.stats.font_families||[]).some(f=>/[()]|^ui-/.test(f)), 'font list has no ) or ui-*: '+R.stats.font_families); }
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><style>body{background:#fff}body .btn{background:#d02e66;color:#fff}.btn{background:#ff5c8a;color:#fff}.k{background:#ff5c8a;color:#fff}.k{background:#c2255c}</style></head><body><main><h1>x</h1></main></body></html>'});
+  const c=R.findings.filter(f=>f.rule==='contrast'); ok(!c.some(f=>/"\.btn"/.test(f.message)), 'rule overridden by a more specific selector is skipped'); ok(!c.some(f=>/"\.k"/.test(f.message)&&/ff5c8a/.test(f.message)), 'rule overridden by a later identical selector is skipped'); }
 // worker.js carries its own copy of lintDesign (it is deployed as a single file): both copies must match
 { const seg=s=>{const a=s.indexOf('function lintDesign'); return s.slice(a, s.indexOf('\n}\n',a)+3);};
   ok(seg(fs.readFileSync(new URL('../src/design.js',import.meta.url),'utf8'))===seg(fs.readFileSync(new URL('../src/worker.js',import.meta.url),'utf8')), 'lintDesign in worker.js matches design.js'); }
