@@ -27,4 +27,15 @@ const G=lintDesign({html:fs.readFileSync(new URL('./good.html',import.meta.url),
   ok(!(R.stats.font_families||[]).some(f=>/^var\(|&quot/.test(f)), 'font list has no var()/&quot: '+R.stats.font_families); }
 { const big='<!doctype html><html lang="en"><head><title>t</title></head><body><main><h1>x</h1></main><script>'+'a'.repeat(450000)+'</script></body></html>';
   ok(!lintDesign({html:big}).error, 'script bodies do not count toward size limit'); }
+// regressions 2026-11-28 (issue i_3f9312a851694d)
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><meta name="viewport" content="width=device-width"></head><body><main><h1>x</h1><input type="file" id="f" hidden><input type="file" style="display:none"><input aria-hidden="true" tabindex="-1"><input name="q"></main></body></html>'});
+  const l=R.findings.filter(f=>f.rule==='input-label'); ok(l.length===1 && /name="q"/.test(l[0].message), 'hidden inputs skipped, visible unlabeled still caught: '+JSON.stringify(l.map(f=>f.message))); }
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><style>:root{--ink:#111;--bg:#151515;--text:#222}</style></head><body><main><h1>x</h1></main></body></html>'});
+  const tk=R.findings.filter(f=>f.rule==='token-contrast'); ok(tk.some(f=>/--ink/.test(f.message)&&f.severity==='warn'), '--ink is warn'); ok(tk.some(f=>/--text/.test(f.message)&&f.severity==='error'), '--text still error'); }
+{ const R=lintDesign({html:'<!doctype html><html lang="en"><head><title>t</title><style>body{background:#fbf9f4}.nav a:hover{background:rgba(255,255,255,.14);color:#fff}.chip{background:rgba(255,106,43,.1);color:#ff6a2b}</style></head><body><main><h1>x</h1><a id="rules"></a><a href="/x"></a></main></body></html>'});
+  const c=R.findings.filter(f=>f.rule==='contrast'); ok(!c.some(f=>/nav a:hover/.test(f.message)), 'white wash under white text skipped'); ok(c.some(f=>/chip/.test(f.message)), 'brand tint still checked over page bg');
+  const ln=R.findings.filter(f=>f.rule==='link-name'); ok(ln.length===1, 'anchor target without href is not a link: '+ln.length); }
+// worker.js carries its own copy of lintDesign (it is deployed as a single file): both copies must match
+{ const seg=s=>{const a=s.indexOf('function lintDesign'); return s.slice(a, s.indexOf('\n}\n',a)+3);};
+  ok(seg(fs.readFileSync(new URL('../src/design.js',import.meta.url),'utf8'))===seg(fs.readFileSync(new URL('../src/worker.js',import.meta.url),'utf8')), 'lintDesign in worker.js matches design.js'); }
 console.log(`pass ${pass} fail ${fail}`);

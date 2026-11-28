@@ -3,7 +3,7 @@
 const SITE = "https://www.antigravityskills.org";
 const FILES = "https://files.antigravityskills.org/install";
 const DATA_UPDATED = "2026-11-26";
-const SERVER = { name: "design-skills", title: "Design Skills MCP (antigravityskills.org)", version: "2.0.1" };
+const SERVER = { name: "design-skills", title: "Design Skills MCP (antigravityskills.org)", version: "2.0.2" };
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const DATA_URL = "https://raw.githubusercontent.com/bodhi584/design-skills-mcp/main/data/design-skills.json";
@@ -397,12 +397,14 @@ function lintDesign(args = {}) {
     if (["input", "select", "textarea"].includes(t.name) && !t.close) {
       const type = (t.attrs.type || "text").toLowerCase();
       if (["hidden", "submit", "button", "reset", "image"].includes(type)) return;
+      // not rendered / not focusable: hidden attribute, aria-hidden, inline display:none or visibility:hidden (e.g. <input type=file hidden> behind a styled button)
+      if ("hidden" in t.attrs || t.attrs["aria-hidden"] === "true" || /display\s*:\s*none|visibility\s*:\s*hidden/i.test(t.attrs.style || "")) return;
       const named = t.attrs["aria-label"] || t.attrs["aria-labelledby"] || (t.attrs.id && labelsFor.has(t.attrs.id)) || openLabels.length || t.attrs.title;
       if (!named) add("error", "input-label", `<${t.name}${t.attrs.name ? ` name="${t.attrs.name}"` : ""}> has no label${t.attrs.placeholder ? " (a placeholder is not a label)" : ""}.`, "Add <label for=id> or wrap the control in <label>.", lineOf(src, t.i));
       if (type === "email" || /email/i.test(t.attrs.name || "")) { if (!t.attrs.autocomplete) add("tip", "autocomplete", "Email input without autocomplete.", 'autocomplete="email".', lineOf(src, t.i)); }
     }
   });
-  tags.filter(t => (t.name === "button" || t.name === "a") && !t.close).forEach(t => {
+  tags.filter(t => (t.name === "button" || (t.name === "a" && ("href" in t.attrs || t.attrs.role === "button" || t.attrs.onclick))) && !t.close).forEach(t => { // <a id=x></a> without href is an anchor target, not a link
     const inner = textOf(src, t.i, t.name); const txt = strip(inner);
     const hasAlt = /<img[^>]+alt="[^"]+"/i.test(inner) || /aria-label=/i.test(inner);
     if (!txt && !t.attrs["aria-label"] && !t.attrs["aria-labelledby"] && !t.attrs.title && !hasAlt) add("error", t.name === "a" ? "link-name" : "button-name", `<${t.name}> has no accessible name (icon only?).`, "Add visible text or aria-label.", lineOf(src, t.i));
@@ -435,14 +437,18 @@ function lintDesign(args = {}) {
     if (/\ball\b/.test(d.transition || "") || /\ball\b/.test(d["transition-property"] || "")) transAll++;
     if (/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.(0[5-9]|1|15)\)/.test(d["box-shadow"] || "")) softShadow++;
     // contrast of color/background declared in same rule
-    const fg = firstColor(resolveVars(d.color, vars)); let bg = firstColor(resolveVars(d["background-color"] || d.background, vars)); if (bg && bg.a != null && bg.a < 1) bg = blend(bg, pageBg);
-    if (fg && bg) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text).`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
+    const fg = firstColor(resolveVars(d.color, vars)); let bg = firstColor(resolveVars(d["background-color"] || d.background, vars));
+    // a translucent white (or black) wash under white (or black) text only makes sense on a dark (or light) parent we cannot see: skip it
+    const ext = c => c && (c.r >= 240 && c.g >= 240 && c.b >= 240 ? 1 : c.r <= 15 && c.g <= 15 && c.b <= 15 ? -1 : 0);
+    const overlayOnUnknown = bg && bg.a != null && bg.a < 1 && ext(bg) !== 0 && ext(bg) === ext(fg);
+    if (bg && bg.a != null && bg.a < 1) bg = blend(bg, pageBg);
+    if (fg && bg && !overlayOnUnknown) { const cr = contrast(fg, bg); if (cr < 4.5) add(cr < 3 ? "error" : "warn", "contrast", `"${r.sel.slice(0, 60)}": text ${toHex(fg)} on ${toHex(bg)} is ${cr.toFixed(2)}:1 (needs 4.5:1 for normal text).`, `Use ${fixForeground(fg, bg, 4.6)} for the text, or 3:1 only if the text is large (24px+).`, null); }
   });
-  // token pair contrast: --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)
+  // token pair contrast (--ink/--muted only warn: on dark themes --ink is often the page colour, not text): --*text*/--*muted*/--*ink* vs --*bg*/--*surface*/--*paper* within the same rule (theme blocks)
   rules.forEach(r => {
     const keys = Object.keys(r.decl).filter(k => k.startsWith("--"));
     const bgRef = firstColor(resolveVars(r.decl[keys.find(k => /^--(color-)?(bg|background|surface|paper)$/.test(k))] || "", vars)); const fgK = keys.filter(k => /^--(color-)?(text|ink|fg|foreground|text-muted|muted-foreground)$/.test(k) || (/^--(color-)?muted$/.test(k) && bgRef && (() => { const c = firstColor(resolveVars(r.decl[k], vars)); return c && contrast(c, bgRef) >= 2; })())), bgK = keys.filter(k => /^--(color-)?(bg|background|surface|paper|well|raised|card)$/.test(k));
-    fgK.forEach(f => bgK.forEach(b => { const fc = firstColor(resolveVars(r.decl[f], vars)), bc = firstColor(resolveVars(r.decl[b], vars)); if (fc && bc) { const cr = contrast(fc, bc); if (cr < 4.5) add("error", "token-contrast", `Theme "${r.sel.slice(0, 40)}": ${f} on ${b} is ${cr.toFixed(2)}:1.`, `Set ${f} to ${fixForeground(fc, bc, 4.6)}.`); } }));
+    fgK.forEach(f => bgK.forEach(b => { const fc = firstColor(resolveVars(r.decl[f], vars)), bc = firstColor(resolveVars(r.decl[b], vars)); if (fc && bc) { const cr = contrast(fc, bc); if (cr < 4.5) add(/^--(color-)?(text|fg|foreground|text-muted|muted-foreground)$/.test(f) ? "error" : "warn", "token-contrast", `Theme "${r.sel.slice(0, 40)}": ${f} on ${b} is ${cr.toFixed(2)}:1.`, `Set ${f} to ${fixForeground(fc, bc, 4.6)}.`); } }));
   });
   if (outlineNone && !focusVisible) add("error", "focus-removed", "outline is removed and no :focus-visible style replaces it.", ":focus-visible{outline:2px solid <brand>;outline-offset:2px}");
   if (!focusVisible && tags.some(t => ["button", "a", "input"].includes(t.name))) add("warn", "focus-style", "No :focus-visible style; keyboard users rely on the browser default.", "Add a visible :focus-visible ring that matches the design.");
