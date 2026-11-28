@@ -405,9 +405,9 @@ export function lintDesign(args = {}) {
   let outlineNone = false; const focusVisible = rules.some(r => /:focus(-visible|-within)?\b/.test(r.sel) && ((r.decl.outline && !/^(none|0)\b/.test(r.decl.outline)) || r.decl["box-shadow"] || r.decl["outline-color"] || r.decl.border || r.decl["border-color"]));
   const fams = new Set(); const colors = new Set(); const bgColors = new Set(); let uppercaseTracked = 0, gradients = 0, vwFont = 0, transAll = 0, softShadow = 0, tiny = 0;
   const pageBg = (() => { for (const r of rules) { if (!/^(html|body|:root)\b/.test(r.sel)) continue; const c = firstColor(resolveVars(r.decl["background-color"] || r.decl.background || r.decl["--bg"] || r.decl["--background"] || "", vars)); if (c && (c.a == null || c.a === 1)) return c; } return { r: 255, g: 255, b: 255, a: 1 }; })();
-  // cascade-lite: a rule whose colours are overridden by a later identical selector, or by a more specific one ending in it (body .btn over .btn), is not what visitors see
+  // cascade-lite: a rule whose colours are overridden by a later identical selector, or by the same selector under html/body only (body .btn over .btn; .foot a does NOT override a), is not what visitors see
   const paints = o => "color" in o.decl || "background" in o.decl || "background-color" in o.decl;
-  const effective = (r, ri) => { const d = { ...r.decl }; rules.forEach((o, oi) => { if (o !== r && paints(o) && ((o.sel === r.sel && oi > ri) || o.sel.endsWith(" " + r.sel))) { if ("color" in o.decl) d.color = o.decl.color; if ("background" in o.decl || "background-color" in o.decl) { delete d.background; d["background-color"] = o.decl["background-color"] || o.decl.background; } } }); return d; };
+  const effective = (r, ri) => { const d = { ...r.decl }; rules.forEach((o, oi) => { if (o !== r && paints(o) && ((o.sel === r.sel && oi > ri) || (o.sel.endsWith(" " + r.sel) && /^(?:(?:html|body|:root)\s+)+$/.test(o.sel.slice(0, o.sel.length - r.sel.length))))) { if ("color" in o.decl) d.color = o.decl.color; if ("background" in o.decl || "background-color" in o.decl) { delete d.background; d["background-color"] = o.decl["background-color"] || o.decl.background; } } }); return d; };
   rules.forEach((r, ri) => {
     const d = r.decl;
     if (/^(none|0)\b/.test(d.outline || "") && !/focus-visible/.test(r.sel)) outlineNone = true;
